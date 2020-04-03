@@ -1,10 +1,10 @@
 from tkinter import *
 from tkinter import messagebox
-from tkinter.ttk import Combobox
+from tkinter.ttk import Combobox, Progressbar
 import json
 from generator_G_codes import *
 from os import rename as rename_file
-#from PIL import ImageTk
+import threading
 
 
 def is_opened_file(filename):
@@ -84,6 +84,16 @@ def is_big_size_futute_file(data_dict):
 
 
 def click_generate():
+	win = Toplevel(window)
+	def window_deleted():
+		pass
+	win.protocol('WM_DELETE_WINDOW', lambda: window_deleted)
+	bar = Progressbar(win, length=300)
+	bar.pack()
+	centered_win(win)
+	threading.Thread(target=lambda : progress_generate(win, bar)).start()
+
+def progress_generate(win_with_progress, bar):
     # Обновляем данные
     data = recursion_saver(wd_left)
     combo = wl_right[1][1]
@@ -106,8 +116,13 @@ def click_generate():
     if is_opened_file("G-code.tap"):
         return
 
+    # Создаём функцию для отображения процесса на progressbar
+    def display_progress(progress):
+        bar['value'] = progress
     # Генерируем
-    generate_G_codes_file(data_dict)
+    generate_G_codes_file(data_dict, display_progress)
+    # Закрываем окно
+    win_with_progress.destroy()
     messagebox.showinfo('Всё прошло удачно! Наверно...', 'Сгенерирован файл с g кодами') 
 
 
@@ -219,7 +234,7 @@ with open('heads.json', 'r', encoding='utf-8') as f:
 #    print(section, item)
 
 window = Tk()  
-window.title("Генератор G кодов для ИП станка v.1.0")
+window.title("Генератор G кодов для ИП станка v.1.1")
 window.iconbitmap('test.ico')
 
 left_desk = Frame(window, padx=5, pady=5)
@@ -269,8 +284,8 @@ bt_setup.grid(column=1, row=15, padx=3, pady=3, sticky=W+E)
 
 bt_generate = Button(right_desk, text='Генерировать g-code файл', bg='lime green', command=click_generate)
 bt_generate.grid(columnspan=2, row=16, padx=3, pady=3, sticky=W+E)
-
 centered_win(window)
+
 window.resizable(False, False)
 
 window.mainloop()

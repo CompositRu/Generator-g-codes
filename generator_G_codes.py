@@ -14,6 +14,7 @@ def check_dict_keys(data_dict):
 				"Глубина удара (мм)",
 				"Расстояние от каркаса до головы перед ударом (мм)",
 				"Пауза в конце слоя (сек)",
+				"Скорость движения осей станка",
 				"Параметры паттерна",
 				"Количество шагов головы", 
 				"Начальное положение головы", 
@@ -72,7 +73,7 @@ def generate_offset_list(nx, ny, cell_size_x, cell_size_y):
 	return offset_list
 
 
-def generate_G_codes_file(data_dict):
+def generate_G_codes_file(data_dict, display_percent_progress_func):
 	cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
 	cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
 	nx = data_dict['Параметры паттерна']['nx']
@@ -98,12 +99,13 @@ def generate_G_codes_file(data_dict):
 	is_random_order = data_dict['Случайный порядок ударов']
 	is_random_offsets = data_dict['Случайные смещения']
 	coefficient_random_offsets = data_dict['Коэффициент случайных смещений']
+	speed = data_dict['Скорость движения осей станка']
 
 	# Открываем файл
 	gcode_file = open("G-code.tap", 'w')
 
 	# Установка скорости и начального положения
-	gcode_file.write('F2500.0\n')
+	gcode_file.write('F' + '{:.1f}'.format(speed) + '\n')
 
 	# Вспомогательные параметры
 	offset_list = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
@@ -206,6 +208,8 @@ def generate_G_codes_file(data_dict):
 		write_to_f(gcode_file, 
 					'{:21}'.format(command),
 					'; Pause\n;\n')
+		#Отображаем процесс на progressbar
+		display_percent_progress_func(layer/(amount_layers + amount_virtual_layers)*100)
 
 	# закрытие файлов
 	gcode_file.close()
