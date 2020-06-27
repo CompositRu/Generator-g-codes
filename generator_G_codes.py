@@ -27,7 +27,7 @@ def check_dict_keys(data_dict):
 	pattern_list = ['nx', 'ny', 'Кол-во ударов']
 	xy_list = ['X', 'Y']
 	xyz_list = ['X', 'Y', 'Z']
-	head_parameters_list = ['X', 'Y', 'dir']
+	head_parameters_list = ['X', 'Y', 'path']
 
 	for item in base_list:
 		if item not in data_dict:
@@ -100,9 +100,11 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
 	is_random_offsets = data_dict['Случайные смещения']
 	coefficient_random_offsets = data_dict['Коэффициент случайных смещений']
 	speed = data_dict['Скорость движения осей станка']
+	order = data_dict["Порядок прохождения рядов"]
+	filename = data_dict["Имя файла"]
 
 	# Открываем файл
-	gcode_file = open("G-code.tap", 'w')
+	gcode_file = open(filename, 'w')
 
 	# Установка скорости и начального положения
 	gcode_file.write('F' + '{:.1f}'.format(speed) + '\n')
@@ -110,21 +112,33 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
 	# Вспомогательные параметры
 	offset_list = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
 
+	# Если выбран чекбокс "случайный порядок ударов", то перемешиваем список координат ударов
 	if is_random_order:
 		random.shuffle(offset_list)
-		print('Случайный порядок ударов')
-
-	start_hit_offs = 0
-	finsh_hit_offs = num_pitch
-	z_offset = 0
 	
 	# Формируем список с порядком прохождения рядов
 	rows = list(range(num_row_y))
-	#center = (len(rows) - 1) // 2
-	#rows = rows[center::-1] + rows[center + 1:]
-	rows = rows[1::2] + rows[::2]
+	if order == 'По очереди':
+		pass
+	elif order == 'Сначала чётные':
+		rows = rows[1::2] + rows[::2]
+	elif order == 'Сначала нечётные':
+		rows = rows[::2] + rows[1::2] 
+	elif order == 'Из центра':
+		center = (len(rows) - 1) // 2
+		rows = rows[center::-1] + rows[center + 1:]
+	elif order == 'В центр':
+		center = (len(rows) - 1) // 2
+		rows = rows[:center] + rows[:center - 1:-1]
+	else:
+		raise KeyError('Для данного порядка не написан алгоритм прохождения рядов')
 	
+	# Пишем g-коды
+	start_hit = 0
+	finsh_hit = num_pitch
 	for layer in range(amount_layers + amount_virtual_layers):
+		# Вычисляем смещение по высоте
+		z_offset = layer_thickness * layer
 		# Комментарий с номером слоя
 		if layer < amount_layers:
 			write_to_f(gcode_file, 
@@ -153,17 +167,17 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
 					'; Start position\n')
 
 		# Цикл по большим шагам головы по Х и Y
-		#for row in range(num_row_y):		#Эту раскомментировать (по порядку)
-		for row in rows:					#Эту закомментировать (сначала нечётные, потом чётные)
+		for row in rows:
 			# Смещение головы на её ширину вдоль Y
 			y = cell_size_y * needles_y * row
 			x = 0
 			for _ in range(num_step_x):
 				# Нанесение num_pitch ударов каждой иглой в область
 				# cell_size_x * cell_size_y (Обычно 8 на 8 мм)
-				for offs in offset_list[start_hit_offs:finsh_hit_offs]:
+				for offs in offset_list[start_hit:finsh_hit]:
 					current_x = x + offs[0]
 					current_y = y + offs[1]
+					# Если выбран чекбокс "случайные смещения"
 					if is_random_offsets:
 						current_x += coefficient_random_offsets * (random.random() - 0.5) * 2
 						current_y += coefficient_random_offsets * (random.random() - 0.5) * 2
@@ -186,15 +200,12 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
 				# Смещение головы на её ширину вдоль Х
 				x += cell_size_x * needles_x
 		# Смещение координат ударов на новом слое
-		if (finsh_hit_offs < len(offset_list)):
-			start_hit_offs += num_pitch
-			finsh_hit_offs += num_pitch
+		if (finsh_hit < len(offset_list)):
+			start_hit += num_pitch
+			finsh_hit += num_pitch
 		else:
-			start_hit_offs = 0
-			finsh_hit_offs = num_pitch
-		# Смещение головы на толщину слоя
-		if (layer < amount_layers):
-			z_offset += layer_thickness
+			start_hit = 0
+			finsh_hit = num_pitch
 
 		# Отъезд после прохождения слоя
 		command = 'G1 X' + str(round(x_after_layer, 2)) +\
