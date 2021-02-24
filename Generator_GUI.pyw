@@ -66,7 +66,7 @@ def recursion_saver(widget_dict):
 def write_to_json_file(file_name, data_dict):
     if is_opened_file(file_name):
         return
-    with open(file_name, 'w', encoding='utf-8') as f:
+    with open(file_name, 'w', encoding='utf-8-sig') as f:
         f.write(json.dumps(data_dict, 
                             ensure_ascii=False,
                             indent=4))
@@ -191,12 +191,13 @@ def click_setup():
                 return
 
         heads["Количество рядов игл на голове"].clear()
-
+        head_needles = heads["Количество рядов игл на голове"]    
+ 
         # Сохранение данных
         for head, widget in widgets.items():
-            head_name = widget['head_name'].get()
-            head_data = heads["Количество рядов игл на голове"][head_name]
-            head_data = {}
+            head_name = widget['head_name'].get()           
+            head_needles[head_name] = {}
+            head_data = head_needles[head_name] 
             head_data['X'] = int(widget['X'].get())
             head_data['Y'] = int(widget['Y'].get())            
             head_data['path'] = widget['path'].get()  
@@ -204,10 +205,15 @@ def click_setup():
         write_to_json_file('heads.json', heads)
 
         combo = wd_right["Комбобокс выбор головы"]
-        val = []
-        for section, item in heads["Количество рядов игл на голове"].items():
-            val.append(section)
-        combo['values'] = val
+        idx = combo['values'].index(combo.get())
+
+        combo['values'] = [section for section, item in heads["Количество рядов игл на голове"].items()]
+
+        combo.current(idx if idx < len(combo['values']) else 0)
+        heads['Выбранная голова'] = combo.get()
+
+        # Обновляем главное окно. В качестве аргумента event используем что угодно
+        change_pic(1);
 
     save_button = Button(win, 
                         text = 'Сохранить', 
@@ -412,29 +418,35 @@ def display_right_side_bottom(frame):
     var2.set(second_dict["Случайные смещения"])
     chkb2 = Checkbutton(right_desk, text="Случайные смещения", variable=var2, font=("Arial Bold", 10, 'bold'))
     chkb2.grid(columnspan=2, row=12, sticky=W)
+   
+    var3 = BooleanVar()
+    var3.set(second_dict["Чередование направлений прохода слоя"])
+    chkb3 = Checkbutton(right_desk, text="Чередование направлений прохода слоя", variable=var3, font=("Arial Bold", 10, 'bold'))
+    chkb3.grid(columnspan=2, row=14, sticky=W)
 
     label_empty = Label(right_desk, text='\n'*1)
-    label_empty.grid(columnspan=2, row=14, sticky=N+S)
+    label_empty.grid(columnspan=2, row=15, sticky=N+S)
 
     bt_save = Button(right_desk, text='Сохранить', width = 15, bg='ivory4', command=click_save)
-    bt_save.grid(column=0, row=15, padx=3, pady=3, sticky=W+E)
+    bt_save.grid(column=0, row=16, padx=3, pady=3, sticky=W+E)
 
     bt_setup = Button(right_desk, text='Настроить', width = 15, bg='ivory4', command=click_setup)
-    bt_setup.grid(column=1, row=15, padx=3, pady=3, sticky=W+E)
+    bt_setup.grid(column=1, row=16, padx=3, pady=3, sticky=W+E)
 
     lab = Label(right_desk, text = "Имя файла")
-    lab.grid(column=0, row=16)
+    lab.grid(column=0, row=17)
 
     text_field2 = Entry(right_desk, width = 8, justify='center')
-    text_field2.grid(column=1, row=16, sticky=W+E)
+    text_field2.grid(column=1, row=17, sticky=W+E)
     set_text(text_field2, filename)
 
     bt_generate = Button(right_desk, text='Генерировать g-code файл', bg='lime green', command=click_generate)
-    bt_generate.grid(columnspan=2, row=17, padx=3, pady=3, sticky=W+E)
+    bt_generate.grid(columnspan=2, row=18, padx=3, pady=3, sticky=W+E)
 
     widget_dict = {}
     widget_dict["Случайный порядок ударов"] = var1
     widget_dict["Случайные смещения"] = var2
+    widget_dict["Чередование направлений прохода слоя"] = var3
     widget_dict["Коэффициент случайных смещений"] = text_field1
     widget_dict["Имя файла"] = text_field2
 
@@ -443,7 +455,7 @@ def display_right_side_bottom(frame):
 
 if __name__ == "__main__":
     #Открываем файл с конфигами
-    with open('data.json', 'r', encoding='utf-8') as f:
+    with open('data.json', 'r', encoding='utf-8-sig') as f:
         data = json.load(f)
 
     filename = data.pop("Имя файла")
@@ -452,12 +464,13 @@ if __name__ == "__main__":
     second_dict["Случайный порядок ударов"] = data.pop("Случайный порядок ударов")
     second_dict["Случайные смещения"] = data.pop("Случайные смещения")
     second_dict["Коэффициент случайных смещений"] = data.pop("Коэффициент случайных смещений")
+    second_dict["Чередование направлений прохода слоя"] = data.pop("Чередование направлений прохода слоя")
 
     order_list = data.pop("Список вариантов порядка прохождения рядов")
     selected_order = data.pop("Порядок прохождения рядов")
 
     #Открываем файл с конфигами голов
-    with open('heads.json', 'r', encoding='utf-8') as f:
+    with open('heads.json', 'r', encoding='utf-8-sig') as f:
         heads = json.load(f)
 
     window = Tk()  

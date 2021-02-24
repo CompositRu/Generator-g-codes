@@ -22,7 +22,8 @@ def check_dict_keys(data_dict):
                 "Расстояние между иглами (мм)", 
                 "Случайный порядок ударов",
                 "Случайные смещения",
-                "Коэффициент случайных смещений"]
+                "Коэффициент случайных смещений",
+                "Чередование направлений прохода слоя"]
     heads_list = ["Количество рядов игл на голове", "Выбранная голова"]
     pattern_list = ['nx', 'ny', 'Кол-во ударов']
     xy_list = ['X', 'Y']
@@ -73,6 +74,10 @@ def generate_offset_list(nx, ny, cell_size_x, cell_size_y):
     return offset_list
 
 
+def r(x):
+    return round(x, 1)
+
+
 def generate_G_codes_file(data_dict, display_percent_progress_func):
     cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
@@ -98,6 +103,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     pause = data_dict['Пауза в конце слоя (сек)']
     is_random_order = data_dict['Случайный порядок ударов']
     is_random_offsets = data_dict['Случайные смещения']
+    is_rotation_direction = data_dict['Чередование направлений прохода слоя']
     coefficient_random_offsets = data_dict['Коэффициент случайных смещений']
     speed = data_dict['Скорость движения осей станка']
     order = data_dict["Порядок прохождения рядов"]
@@ -106,18 +112,21 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     # Открываем файл
     gcode_file = open(filename, 'w')
 
-    # Описание файла
+    # Prehead с описанием файла
     write_to_f(gcode_file, ';\n')
-    write_to_f(gcode_file, '; {:15}: {}\n'.format('needles_x', needles_x))
-    write_to_f(gcode_file, '; {:15}: {}\n'.format('needles_y', needles_y))
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('needles_x', needles_x))
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('needles_y', needles_y))
     write_to_f(gcode_file, ';\n')
-    write_to_f(gcode_file, '; {:15}: {}\n'.format('steps_X', num_step_x))
-    write_to_f(gcode_file, '; {:15}: {}\n'.format('steps_Y', num_row_y))
-    write_to_f(gcode_file, '; {:15}: {}\n'.format('layers', amount_layers))
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('steps_X', num_step_x))
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('steps_Y', num_row_y))
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('layers', amount_layers))
+    write_to_f(gcode_file, ';\n')
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('hits to 1 layer', num_pitch * num_step_x * num_row_y))
+    write_to_f(gcode_file, '; {:18}: {}\n'.format('hits to all layers', num_pitch * num_step_x * num_row_y * amount_layers))
     write_to_f(gcode_file, ';\n')
 
     # Установка скорости и начального положения
-    gcode_file.write('F' + '{:.1f}'.format(speed) + '\n')
+    gcode_file.write(f'F {speed:.1f}\n')
 
     # Вспомогательные параметры
     offset_list = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
@@ -152,63 +161,48 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         # Комментарий с номером слоя
         if layer < amount_layers:
             write_to_f(gcode_file, 
-                        ';\n; ', 
-                        '<' * 10,
-                        '   [',
-                        layer + 1, 
-                        '] layer   ',
-                        '>' * 10,
-                        '\n;\n')
+                       f";\n; {'<' * 10}   [{layer + 1}] layer   {'>' * 10}\n;\n")
         else:
             write_to_f(gcode_file, 
-                        ';\n; ', 
-                        '<' * 5,
-                        '   [',
-                        layer + 1, 
-                        '] layer  (holostoy) ',
-                        '>' * 5,
-                        '\n;\n')
+                       f";\n; {'<' * 10}   [{layer + 1}] layer (holostoy)  {'>' * 10}\n;\n")
+
         # Выезд на стартовую точку
-        command = 'G1  X' + str(round(start_x, 2)) +\
-                     ' Y' + str(round(start_y, 2)) +\
-                     ' Z' + str(round(start_z + z_offset, 2)) 
+        command = f'G1 X{r(start_x)} Y{r(start_y)} Z{r(start_z + z_offset)}'
         write_to_f(gcode_file, 
-                    '{:36}'.format(command), 
+                    '{:16}'.format(command), 
                     '; Start position\n')
 
-        # Цикл по большим шагам головы по Х и Y
+        # Цикл рядов по Y
         for row in rows:
-            # Смещение головы на её ширину вдоль Y
             y = cell_size_y * needles_y * row
             x = 0
-            for _ in range(num_step_x):
+            # Цикл шагов по Х
+            step_range = list(range(num_step_x))
+            if is_rotation_direction:
+                step_range = reversed(step_range)
+            for step in step_range:
+                x = 0 + cell_size_x * needles_x * step
                 # Нанесение num_pitch ударов каждой иглой в область
                 # cell_size_x * cell_size_y (Обычно 8 на 8 мм)
-                for offs in offset_list[start_hit:finsh_hit]:
+                offset_range = offset_list[start_hit:finsh_hit]
+                if is_rotation_direction:
+                    offset_range = reversed(offset_range)
+                for offs in offset_range:
                     current_x = x + offs[0]
                     current_y = y + offs[1]
                     # Если выбран чекбокс "случайные смещения"
                     if is_random_offsets:
                         current_x += coefficient_random_offsets * (random.random() - 0.5) * 2
                         current_y += coefficient_random_offsets * (random.random() - 0.5) * 2
-                    write_to_f(gcode_file,
-                                'G1  X', round(current_x, 2), 
-                                ' Y', round(current_y, 2), 
-                                ' ' * 20 + ';',
-                                layer + 1,
-                                ' / ',
-                                amount_layers,
-                                ' (',
-                                amount_layers + amount_virtual_layers,
-                                ')',
-                                '\n')
-                    # удар
-                    write_to_f(gcode_file, 'G1             Z', 
-                                round(-needle_depth + z_offset, 2), '\n')
-                    write_to_f(gcode_file, 'G1             Z', 
-                                round(dist_to_material + z_offset, 2), '\n')
-                # Смещение головы на её ширину вдоль Х
-                x += cell_size_x * needles_x
+
+                    str_count_layers = f'; {layer + 1}/{amount_layers}\n'
+                    command = f'G1 X{r(current_x)} Y{r(current_y)}'
+                    write_to_f(gcode_file, f'{command:16}', str_count_layers)
+                    command = f'G1 Z{r(z_offset - needle_depth)}'
+                    write_to_f(gcode_file, f'{command:16}', str_count_layers)
+                    command = f'G1 Z{r(dist_to_material + z_offset)}'
+                    write_to_f(gcode_file, f'{command:16}', str_count_layers)
+                
         # Смещение координат ударов на новом слое
         if (finsh_hit < len(offset_list)):
             start_hit += num_pitch
@@ -218,19 +212,17 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
             finsh_hit = num_pitch
 
         # Отъезд после прохождения слоя
-        command = 'G1  X' + str(round(x_after_layer, 2)) +\
-                    ' Y' + str(round(y_after_layer, 2)) +\
-                    ' Z' + str(round(z_after_layer + z_offset, 2)) 
+        command = f'G1 X{r(x_after_layer)} Y{r(y_after_layer)} Z{r(z_after_layer + z_offset)}'
         write_to_f(gcode_file, 
-                    '{:36}'.format(command), 
+                    '{:21}'.format(command), 
                     '; Position after layer\n')
         # Пауза P секунд
-        command = 'G4  P' + str(round(pause * 1000, 1))
+        command = f'G4 P{r(pause * 1000)}'
         write_to_f(gcode_file, 
-                    '{:36}'.format(command),
+                    '{:16}'.format(command),
                     '; Pause\n;\n')
         #Отображаем процесс на progressbar
-        display_percent_progress_func(layer/(amount_layers + amount_virtual_layers)*100)
+        display_percent_progress_func(layer / (amount_layers + amount_virtual_layers) * 100)
 
     # закрытие файлов
     gcode_file.close()
