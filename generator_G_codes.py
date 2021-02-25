@@ -176,17 +176,23 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         for row in rows:
             y = cell_size_y * needles_y * row
             x = 0
+
             # Цикл шагов по Х
             step_range = list(range(num_step_x))
-            if is_rotation_direction:
+            if is_rotation_direction and (layer + 1) % 2:
                 step_range = reversed(step_range)
+
+            print(list(step_range))
             for step in step_range:
                 x = 0 + cell_size_x * needles_x * step
+
+                # Цикл микрошагов внутри ячейки между иглами
                 # Нанесение num_pitch ударов каждой иглой в область
                 # cell_size_x * cell_size_y (Обычно 8 на 8 мм)
                 offset_range = offset_list[start_hit:finsh_hit]
-                if is_rotation_direction:
+                if is_rotation_direction and (layer + 1) % 2:
                     offset_range = reversed(offset_range)
+
                 for offs in offset_range:
                     current_x = x + offs[0]
                     current_y = y + offs[1]
