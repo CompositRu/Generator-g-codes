@@ -427,7 +427,7 @@ def display_right_side_top(frame):
 
     combo.bind('<<ComboboxSelected>>', change_pic)
 
-    lab = Label(frame, text = '\nКоличество рядов игл на голове:', font=("Arial Bold", 10, 'bold'))
+    lab = Label(frame, text = 'Количество рядов игл на голове:', font=("Arial Bold", 10, 'bold'))
     lab.grid(columnspan=2, row=2)
 
     X_needles = heads['Количество рядов игл на голове'][head_name]['X']
@@ -488,9 +488,9 @@ def display_right_side_bottom(frame):
     chkb3 = Checkbutton(right_desk, text="Чередование направлений прохода слоя", variable=var3, font=("Arial Bold", 10, 'bold'))
     chkb3.grid(columnspan=2, row=14, sticky=W)
 
-    label_empty = Label(right_desk, text='\n'*1)
+    '''label_empty = Label(right_desk)
     label_empty.grid(columnspan=2, row=15, sticky=N+S)
-    frame.rowconfigure(15, weight=1) # Эта строска нужна, чтобы виджет мог растягиваться   
+    frame.rowconfigure(15, weight=1) # Эта строска нужна, чтобы виджет мог растягиваться '''  
 
     var4 = BooleanVar()
     var4.set(second_dict["Автоматическая генерация имени файла"])
