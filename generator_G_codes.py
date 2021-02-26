@@ -143,7 +143,7 @@ def get_filename(data_dict):
         if selected_type_frame_size == 'По шагам головы':
             frame_length_x = num_step_x * head_width_x
             frame_length_y = num_row_x * head_width_y
-        return f'{frame_length_x}x{frame_length_y}x{frame_height} {num_pitch} ударов {head_name}'
+        return f'{frame_length_x}x{frame_length_y}x{frame_height} {num_pitch} ударов {head_name}.tap'
 
 
 def generate_G_codes_file(data_dict, display_percent_progress_func):
