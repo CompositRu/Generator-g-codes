@@ -178,7 +178,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     # Вспомогательные параметры
     head_width_x = cell_size_x * needles_x
     head_width_y = cell_size_y * needles_y
-    frame_height = amount_layers * layer_thickness
+    frame_height = int(amount_layers * layer_thickness)
 
     # Открываем файл
     if is_automatic_name:
