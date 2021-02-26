@@ -1,7 +1,7 @@
 '''
     This is program for creating g-codes files for CNC needlepunching machine.
 
-    This module is gui. 
+    This is gui module. 
 '''
 
 
@@ -75,8 +75,10 @@ def write_to_json_file(file_name, data_dict):
 def click_save():
     data_to_json = recursion_saver(wd_left)
     data_to_json["Список вариантов порядка прохождения рядов"] = order_list
-    data_to_json["Порядок прохождения рядов"] = order_list[data_to_json.pop("Номер радиокнопки")]
-
+    data_to_json["Порядок прохождения рядов"] = order_list[data_to_json.pop("Номер радиокнопки для порядка рядов")]
+    data_to_json["Список вариантов задания размеров каркаса"] = type_frame_size_list
+    data_to_json["Задание размеров каркаса"] = type_frame_size_list[data_to_json.pop("Номер радиокнопки типа задания размера каркаса")]
+    
     write_to_json_file('data.json', data_to_json)
 
     combo = wd_right["Комбобокс выбор головы"]
@@ -136,7 +138,6 @@ def click_setup():
     win.title("Количество рядов игл на голове")
     win.iconbitmap('symbol.ico')
     win.grab_set()
-    win.resizable(False, False)
     
     i, widgets = 0, {}
 
@@ -224,6 +225,8 @@ def click_setup():
                     sticky=W+E, 
                     padx=10, 
                     pady=10)
+    centered_win(win)
+    win.resizable(False, False)
 
 
 def is_big_size_futute_file(data_dict):
@@ -242,11 +245,12 @@ def is_big_size_futute_file(data_dict):
 def get_data_for_generating():
     ''' Get dict with all settings'''
     data = recursion_saver(wd_left)
-    data["Порядок прохождения рядов"] = order_list[data.pop("Номер радиокнопки")]
+    data["Порядок прохождения рядов"] = order_list[data.pop("Номер радиокнопки для порядка рядов")]
+    data["Задание размеров каркаса"] = type_frame_size_list[data.pop("Номер радиокнопки типа задания размера каркаса")]
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
     heads['Выбранная голова'] = head_name    
-    return {**data, **second_dict, **heads}
+    return {**data, **second_dict, **heads}  
 
 
 def click_generate():
@@ -283,7 +287,7 @@ def progress_generate(win_with_progress, bar):
         win_with_progress.lift()
         if res == False:
             win_with_progress.destroy()
-            return       
+            return
 
     # Создаём функцию для отображения процесса на progressbar
     def display_progress(progress):
@@ -292,18 +296,20 @@ def progress_generate(win_with_progress, bar):
     generate_G_codes_file(data_dict, display_progress)
     # Закрываем окно
     win_with_progress.destroy()
-    messagebox.showinfo('Всё прошло удачно! Наверно...', 'Сгенерирован файл с g-кодами') 
+    messagebox.showinfo('Всё прошло удачно', f"Сгенерирован файл\n{get_filename(data_dict)}\n\n{get_message(data_dict)}" ) 
 
 
-def display_parameters(frame, data_dict, i_row):
+def display_parameters_recursion(frame, data_dict, i_row):
     widget_dict = {}
+    labels_dict = {}
     i = i_row
     for section, item in data_dict.items():
         if isinstance(item, dict): 
             l = Label(frame, text='\n'+section, font=("Arial Bold", 10, 'bold'))
             l.grid(columnspan=2, row=i)
-            i+=1
-            widget_dict[section], i = display_parameters(frame, item, i)         
+            i += 1
+            labels_dict[section + ' label'] = l
+            widget_dict[section], labels_dict[section], i = display_parameters_recursion(frame, item, i)         
         else:
             lab = Label(frame, text = section)
             lab.grid(column=0, row=i)
@@ -311,8 +317,58 @@ def display_parameters(frame, data_dict, i_row):
             text_field.grid(column=1, row=i)
             set_text(text_field, item)
             widget_dict[section] = text_field
-            i+=1
-    return widget_dict, i
+            labels_dict[section] = lab
+            i += 1
+    return widget_dict, labels_dict, i
+
+
+def change_visible():
+    n = wd_left['Номер радиокнопки типа задания размера каркаса'].get()
+    if n == 1:
+        wd_left['Количество шагов головы']['X'].grid_remove()
+        wd_left['Количество шагов головы']['Y'].grid_remove()
+        wd_left['Габариты каркаса']['X'].grid()
+        wd_left['Габариты каркаса']['Y'].grid()
+        wd_labels['Количество шагов головы']['X'].grid_remove()
+        wd_labels['Количество шагов головы']['Y'].grid_remove()
+        wd_labels['Количество шагов головы label'].grid_remove()
+        wd_labels['Габариты каркаса']['X'].grid()
+        wd_labels['Габариты каркаса']['Y'].grid()
+        wd_labels['Габариты каркаса label'].grid()
+    else:
+        wd_left['Количество шагов головы']['X'].grid()
+        wd_left['Количество шагов головы']['Y'].grid()
+        wd_left['Габариты каркаса']['X'].grid_remove()
+        wd_left['Габариты каркаса']['Y'].grid_remove()
+        wd_labels['Количество шагов головы']['X'].grid()
+        wd_labels['Количество шагов головы']['Y'].grid()
+        wd_labels['Количество шагов головы label'].grid()
+        wd_labels['Габариты каркаса']['X'].grid_remove()
+        wd_labels['Габариты каркаса']['Y'].grid_remove()
+        wd_labels['Габариты каркаса label'].grid_remove()
+
+def display_parameters(frame, data_dict, i_row):
+    part_data_dict = {}
+    part_data_dict['Количество шагов головы'] = data_dict.pop('Количество шагов головы')
+    part_data_dict['Габариты каркаса'] = data_dict.pop('Габариты каркаса')
+
+    widget_dict, labels_dict, i = display_parameters_recursion(frame, data_dict, i_row)
+
+    l = Label(frame, text = "\nТип задания размеров каркаса:", font=("Arial Bold", 10, 'bold'))
+    l.grid(columnspan=2, row = i)
+    i+=1
+    var = IntVar()
+    var.set(type_frame_size_list.index(selected_type_frame_size))
+    for j, order in enumerate(type_frame_size_list):
+        r = Radiobutton(frame, text = order, value = j, variable = var, command=change_visible)
+        r.grid(columnspan=2, row = i, padx = 50, sticky=W)
+        i += 1
+    widget_dict['Номер радиокнопки типа задания размера каркаса'] = var
+
+    wd, wl, i = display_parameters_recursion(frame, part_data_dict, i)
+    widget_dict = {**widget_dict, **wd}
+    labels_dict = {**labels_dict, **wl}
+    return widget_dict, labels_dict
 
 
 def show_image(canvas, filename):
@@ -401,6 +457,14 @@ def display_radiobuttons(frame):
     return v
 
 
+def change_visible_filename():
+    n = wd_left['Автоматическая генерация имени файла'].get()
+    if n == 0:
+        wd_left['Имя файла'].config(state='normal')
+    else:
+        wd_left['Имя файла'].config(state='disabled')
+
+
 def display_right_side_bottom(frame):
     var1 = BooleanVar()
     var1.set(second_dict["Случайный порядок ударов"])
@@ -426,27 +490,34 @@ def display_right_side_bottom(frame):
 
     label_empty = Label(right_desk, text='\n'*1)
     label_empty.grid(columnspan=2, row=15, sticky=N+S)
+    frame.rowconfigure(15, weight=1) # Эта строска нужна, чтобы виджет мог растягиваться   
+
+    var4 = BooleanVar()
+    var4.set(second_dict["Автоматическая генерация имени файла"])
+    chkb4 = Checkbutton(right_desk, text="Автоматическая генерация имени файла", variable=var4, font=("Arial Bold", 10, 'bold'), command=change_visible_filename)
+    chkb4.grid(columnspan=2, row=16, sticky=W)
 
     bt_save = Button(right_desk, text='Сохранить', width = 15, bg='ivory4', command=click_save)
-    bt_save.grid(column=0, row=16, padx=3, pady=3, sticky=W+E)
+    bt_save.grid(column=0, row=17, padx=3, pady=3, sticky=W+E)
 
     bt_setup = Button(right_desk, text='Настроить', width = 15, bg='ivory4', command=click_setup)
-    bt_setup.grid(column=1, row=16, padx=3, pady=3, sticky=W+E)
+    bt_setup.grid(column=1, row=17, padx=3, pady=3, sticky=W+E)
 
     lab = Label(right_desk, text = "Имя файла")
-    lab.grid(column=0, row=17)
+    lab.grid(column=0, row=18)
 
     text_field2 = Entry(right_desk, width = 8, justify='center')
-    text_field2.grid(column=1, row=17, sticky=W+E)
+    text_field2.grid(column=1, row=18, sticky=W+E)
     set_text(text_field2, filename)
 
     bt_generate = Button(right_desk, text='Генерировать g-code файл', bg='lime green', command=click_generate)
-    bt_generate.grid(columnspan=2, row=18, padx=3, pady=3, sticky=W+E)
+    bt_generate.grid(columnspan=2, row=19, padx=3, pady=3, sticky=W+E)
 
     widget_dict = {}
     widget_dict["Случайный порядок ударов"] = var1
     widget_dict["Случайные смещения"] = var2
     widget_dict["Чередование направлений прохода слоя"] = var3
+    widget_dict["Автоматическая генерация имени файла"] = var4
     widget_dict["Коэффициент случайных смещений"] = text_field1
     widget_dict["Имя файла"] = text_field2
 
@@ -465,28 +536,37 @@ if __name__ == "__main__":
     second_dict["Случайные смещения"] = data.pop("Случайные смещения")
     second_dict["Коэффициент случайных смещений"] = data.pop("Коэффициент случайных смещений")
     second_dict["Чередование направлений прохода слоя"] = data.pop("Чередование направлений прохода слоя")
+    second_dict["Автоматическая генерация имени файла"] = data.pop("Автоматическая генерация имени файла")
 
     order_list = data.pop("Список вариантов порядка прохождения рядов")
     selected_order = data.pop("Порядок прохождения рядов")
+    type_frame_size_list = data.pop("Список вариантов задания размеров каркаса")
+    selected_type_frame_size = data.pop("Задание размеров каркаса")
 
     #Открываем файл с конфигами голов
     with open('heads.json', 'r', encoding='utf-8-sig') as f:
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.3")
+    window.title("Генератор G кодов для ИП станка v.1.4")
     window.iconbitmap('symbol.ico')
 
+    window.columnconfigure(0, weight=1)
+    window.columnconfigure(1, weight=1)
+    window.rowconfigure(0, weight=1)
+
     left_desk = Frame(window, padx=5, pady=5)
-    left_desk.grid(column=0, row=0)
+    left_desk.grid(column=0, row=0, sticky=N+S)
     right_desk = Frame(window, padx=5, pady=5)
     right_desk.grid(column=1, row=0, sticky=N+S)
 
-    wd_left, i = display_parameters(left_desk,  data, 0)
+    wd_left, wd_labels = display_parameters(left_desk,  data, 0)
+    change_visible()
     wd_right = display_right_side_top(right_desk)
-    wd_left["Номер радиокнопки"] = display_radiobuttons(right_desk)
+    wd_left["Номер радиокнопки для порядка рядов"] = display_radiobuttons(right_desk)
     wd_right_bottom = display_right_side_bottom(right_desk)
     wd_left = {**wd_left, **wd_right_bottom}
+    change_visible_filename()
     
 
     centered_win(window)

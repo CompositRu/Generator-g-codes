@@ -1,4 +1,12 @@
+'''
+    This is program for creating g-codes files for CNC needlepunching machine.
+
+    This is algorithm module. 
+'''
+
+
 import random
+from math import ceil as round_to_greater
 
 
 def write_to_f(file_name, *args):
@@ -78,6 +86,66 @@ def r(x):
     return round(x, 1)
 
 
+def get_message(data_dict):
+    cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
+    cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
+    head_name = data_dict['Выбранная голова']
+    needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
+    needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']    
+    frame_length_x = data_dict['Габариты каркаса']['X']
+    frame_length_y = data_dict['Габариты каркаса']['Y']
+    selected_type_frame_size = data_dict['Задание размеров каркаса']
+    num_step_x = data_dict['Количество шагов головы']['X']
+    num_row_y = data_dict['Количество шагов головы']['Y']
+
+    head_width_x = cell_size_x * needles_x
+    head_width_y = cell_size_y * needles_y
+    if selected_type_frame_size == 'По габаритам':
+        num_step_x = round_to_greater(frame_length_x / head_width_x)
+        num_row_y  = round_to_greater(frame_length_y / head_width_y)
+    overhangs_x = (num_step_x * head_width_x - frame_length_x) / 2
+    overhangs_y = (num_row_y * head_width_y - frame_length_y) / 2
+
+    message = ''
+    if selected_type_frame_size == 'По габаритам':
+        message =   (
+                        f'Свесы по Х: {overhangs_x}\n'
+                        f'Свесы по Y: {overhangs_x}\n'
+                        f'Количество шагов по Х: {num_step_x}\n'
+                        f'Количество шагов по Y: {num_row_y}\n'
+                    )
+    return message
+
+
+def get_filename(data_dict):
+    is_automatic_name = data_dict["Автоматическая генерация имени файла"]
+    if is_automatic_name == False:
+        return data_dict["Имя файла"]
+    else:
+        cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
+        cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
+        head_name = data_dict['Выбранная голова']
+        needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
+        needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']    
+        frame_length_x = data_dict['Габариты каркаса']['X']
+        frame_length_y = data_dict['Габариты каркаса']['Y']
+        selected_type_frame_size = data_dict['Задание размеров каркаса']
+        num_step_x = data_dict['Количество шагов головы']['X']
+        num_row_y = data_dict['Количество шагов головы']['Y']
+        amount_layers = data_dict['Количество слоёв']
+        layer_thickness = data_dict['Толщина слоя (мм)']
+        num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
+        
+        head_width_x = cell_size_x * needles_x
+        head_width_y = cell_size_y * needles_y
+        frame_height = int(amount_layers * layer_thickness)
+
+        if selected_type_frame_size == 'По шагам головы':
+            frame_length_x = num_step_x * head_width_x
+            frame_length_y = num_row_x * head_width_y
+        return f'{frame_length_x}x{frame_length_y}x{frame_height} {num_pitch} ударов {head_name}'
+
+
 def generate_G_codes_file(data_dict, display_percent_progress_func):
     cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
@@ -86,6 +154,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
     num_step_x = data_dict['Количество шагов головы']['X']
     num_row_y = data_dict['Количество шагов головы']['Y']
+    frame_length_x = data_dict['Габариты каркаса']['X']
+    frame_length_y = data_dict['Габариты каркаса']['Y']
+    selected_type_frame_size = data_dict['Задание размеров каркаса']
     needle_depth = data_dict['Глубина удара (мм)']
     amount_layers = data_dict['Количество слоёв']
     amount_virtual_layers = data_dict['Количество пустых слоёв']
@@ -108,8 +179,19 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     speed = data_dict['Скорость движения осей станка']
     order = data_dict["Порядок прохождения рядов"]
     filename = data_dict["Имя файла"]
+    is_automatic_name = data_dict["Автоматическая генерация имени файла"]
+
+    # Вспомогательные параметры
+    head_width_x = cell_size_x * needles_x
+    head_width_y = cell_size_y * needles_y
+    frame_height = amount_layers * layer_thickness
 
     # Открываем файл
+    if is_automatic_name:
+        if selected_type_frame_size == 'По шагам головы':
+            frame_length_x = num_step_x * head_width_x
+            frame_length_y = num_row_x * head_width_y
+        filename = f'{frame_length_x}x{frame_length_y}x{frame_height}x{num_pitch} {head_name}' 
     gcode_file = open(filename, 'w')
 
     # Prehead с описанием файла
@@ -152,6 +234,11 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     else:
         raise KeyError('Для данного порядка не написан алгоритм прохождения рядов')
     
+    # Определяем количество шагов головы, если каркас задан габаритами
+    if selected_type_frame_size == 'По габаритам':
+        num_step_x = round_to_greater(frame_length_x / head_width_x)
+        num_row_y  = round_to_greater(frame_length_y / head_width_y)
+
     # Пишем g-коды
     start_hit = 0
     finsh_hit = num_pitch
@@ -174,7 +261,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
 
         # Цикл рядов по Y
         for row in rows:
-            y = cell_size_y * needles_y * row
+            y = head_width_y * row
             x = 0
 
             # Цикл шагов по Х
@@ -182,9 +269,8 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
             if is_rotation_direction and (layer + 1) % 2:
                 step_range = reversed(step_range)
 
-            print(list(step_range))
             for step in step_range:
-                x = 0 + cell_size_x * needles_x * step
+                x = 0 + head_width_x * step
 
                 # Цикл микрошагов внутри ячейки между иглами
                 # Нанесение num_pitch ударов каждой иглой в область
