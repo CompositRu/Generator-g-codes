@@ -230,7 +230,7 @@ def click_setup():
 
 
 def is_big_size_futute_file(data_dict):
-    ''' For warning user that future file will be big'''
+    ''' For warning user that future file will be big '''
     l = data_dict['Количество слоёв']
     i = data_dict['Количество пустых слоёв']
     x = data_dict['Количество шагов головы']['X']
@@ -243,14 +243,15 @@ def is_big_size_futute_file(data_dict):
 
 
 def get_data_for_generating():
-    ''' Get dict with all settings'''
+    ''' Get dict with all settings '''
     data = recursion_saver(wd_left)
+
     data["Порядок прохождения рядов"] = order_list[data.pop("Номер радиокнопки для порядка рядов")]
     data["Задание размеров каркаса"] = type_frame_size_list[data.pop("Номер радиокнопки типа задания размера каркаса")]
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
-    heads['Выбранная голова'] = head_name    
-    return {**data, **second_dict, **heads}  
+    heads['Выбранная голова'] = head_name
+    return {**data, **heads}
 
 
 def click_generate():
@@ -292,8 +293,10 @@ def progress_generate(win_with_progress, bar):
     # Создаём функцию для отображения процесса на progressbar
     def display_progress(progress):
         bar['value'] = progress
+    
     # Генерируем
     generate_G_codes_file(data_dict, display_progress)
+    
     # Закрываем окно
     win_with_progress.destroy()
     messagebox.showinfo('Всё прошло удачно', f"Сгенерирован файл\n{get_filename(data_dict)}\n\n{get_message(data_dict)}" ) 
@@ -306,15 +309,15 @@ def display_parameters_recursion(frame, data_dict, i_row):
     for section, item in data_dict.items():
         if isinstance(item, dict): 
             l = Label(frame, text='\n'+section, font=("Arial Bold", 10, 'bold'))
-            l.grid(columnspan=2, row=i)
+            l.grid(columnspan=2, row=i, sticky=N)
             i += 1
             labels_dict[section + ' label'] = l
             widget_dict[section], labels_dict[section], i = display_parameters_recursion(frame, item, i)         
         else:
             lab = Label(frame, text = section)
-            lab.grid(column=0, row=i)
+            lab.grid(column=0, row=i, sticky=N)
             text_field = Entry(frame, width = 8, justify='center')
-            text_field.grid(column=1, row=i)
+            text_field.grid(column=1, row=i, sticky=N)
             set_text(text_field, item)
             widget_dict[section] = text_field
             labels_dict[section] = lab
@@ -354,9 +357,14 @@ def display_parameters(frame, data_dict, i_row):
 
     widget_dict, labels_dict, i = display_parameters_recursion(frame, data_dict, i_row)
 
+    label_empty = Label(right_desk)
+    label_empty.grid(columnspan=2, row=i, sticky=N+S)
+    frame.rowconfigure(i, weight=1) # Эта строка нужна, чтобы виджет мог растягиваться
+    i += 1
+
     l = Label(frame, text = "\nТип задания размеров каркаса:", font=("Arial Bold", 10, 'bold'))
     l.grid(columnspan=2, row = i)
-    i+=1
+    i += 1
     var = IntVar()
     var.set(type_frame_size_list.index(selected_type_frame_size))
     for j, order in enumerate(type_frame_size_list):
@@ -490,12 +498,17 @@ def display_right_side_bottom(frame):
 
     '''label_empty = Label(right_desk)
     label_empty.grid(columnspan=2, row=15, sticky=N+S)
-    frame.rowconfigure(15, weight=1) # Эта строска нужна, чтобы виджет мог растягиваться '''  
+    frame.rowconfigure(15, weight=1) # Эта строка нужна, чтобы виджет мог растягиваться '''  
 
     var4 = BooleanVar()
-    var4.set(second_dict["Автоматическая генерация имени файла"])
-    chkb4 = Checkbutton(right_desk, text="Автоматическая генерация имени файла", variable=var4, font=("Arial Bold", 10, 'bold'), command=change_visible_filename)
-    chkb4.grid(columnspan=2, row=16, sticky=W)
+    var4.set(second_dict["Создание файла на рабочем столе"])
+    chkb4 = Checkbutton(right_desk, text="Создание файла на рабочем столе", variable=var4, font=("Arial Bold", 10, 'bold'))
+    chkb4.grid(columnspan=2, row=15, sticky=W)
+
+    var5 = BooleanVar()
+    var5.set(second_dict["Автоматическая генерация имени файла"])
+    chkb5 = Checkbutton(right_desk, text="Автоматическая генерация имени файла", variable=var5, font=("Arial Bold", 10, 'bold'), command=change_visible_filename)
+    chkb5.grid(columnspan=2, row=16, sticky=W)
 
     bt_save = Button(right_desk, text='Сохранить', width = 15, bg='ivory4', command=click_save)
     bt_save.grid(column=0, row=17, padx=3, pady=3, sticky=W+E)
@@ -511,13 +524,14 @@ def display_right_side_bottom(frame):
     set_text(text_field2, filename)
 
     bt_generate = Button(right_desk, text='Генерировать g-code файл', bg='lime green', command=click_generate)
-    bt_generate.grid(columnspan=2, row=19, padx=3, pady=3, sticky=W+E)
+    bt_generate.grid(columnspan=2, row=22, padx=3, pady=3, sticky=W+E)
 
     widget_dict = {}
     widget_dict["Случайный порядок ударов"] = var1
     widget_dict["Случайные смещения"] = var2
     widget_dict["Чередование направлений прохода слоя"] = var3
-    widget_dict["Автоматическая генерация имени файла"] = var4
+    widget_dict["Создание файла на рабочем столе"] = var4
+    widget_dict["Автоматическая генерация имени файла"] = var5
     widget_dict["Коэффициент случайных смещений"] = text_field1
     widget_dict["Имя файла"] = text_field2
 
@@ -537,6 +551,7 @@ if __name__ == "__main__":
     second_dict["Коэффициент случайных смещений"] = data.pop("Коэффициент случайных смещений")
     second_dict["Чередование направлений прохода слоя"] = data.pop("Чередование направлений прохода слоя")
     second_dict["Автоматическая генерация имени файла"] = data.pop("Автоматическая генерация имени файла")
+    second_dict["Создание файла на рабочем столе"] = data.pop("Создание файла на рабочем столе")
 
     order_list = data.pop("Список вариантов порядка прохождения рядов")
     selected_order = data.pop("Порядок прохождения рядов")

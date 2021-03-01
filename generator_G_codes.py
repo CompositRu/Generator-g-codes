@@ -7,6 +7,7 @@
 
 import random
 from math import ceil as round_to_greater
+import os
 
 
 def write_to_f(file_name, *args):
@@ -107,7 +108,7 @@ def get_message(data_dict):
     if selected_type_frame_size == 'По габаритам':
         message =   (
                         f'Свесы по Х: {overhangs_x}\n'
-                        f'Свесы по Y: {overhangs_x}\n'
+                        f'Свесы по Y: {overhangs_x}\n\n'
                         f'Количество шагов по Х: {num_step_x}\n'
                         f'Количество шагов по Y: {num_row_y}\n'
                     )
@@ -118,26 +119,27 @@ def get_filename(data_dict):
     is_automatic_name = data_dict["Автоматическая генерация имени файла"]
     if is_automatic_name == False:
         return data_dict["Имя файла"]
-    else:
-        cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
-        cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
-        head_name = data_dict['Выбранная голова']
-        needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
-        needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']    
+    else:        
+        head_name = data_dict['Выбранная голова']          
         frame_length_x = data_dict['Габариты каркаса']['X']
         frame_length_y = data_dict['Габариты каркаса']['Y']
-        selected_type_frame_size = data_dict['Задание размеров каркаса']
-        num_step_x = data_dict['Количество шагов головы']['X']
-        num_row_y = data_dict['Количество шагов головы']['Y']
+        selected_type_frame_size = data_dict['Задание размеров каркаса']       
         amount_layers = data_dict['Количество слоёв']
         layer_thickness = data_dict['Толщина слоя (мм)']
-        num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
+        num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']        
         
-        head_width_x = cell_size_x * needles_x
-        head_width_y = cell_size_y * needles_y
         frame_height = int(amount_layers * layer_thickness)
 
         if selected_type_frame_size == 'По шагам головы':
+            cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
+            cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
+            needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
+            needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']
+            num_step_x = data_dict['Количество шагов головы']['X']
+            num_row_y = data_dict['Количество шагов головы']['Y']
+
+            head_width_x = cell_size_x * needles_x
+            head_width_y = cell_size_y * needles_y
             frame_length_x = num_step_x * head_width_x
             frame_length_y = num_row_y * head_width_y
         return f'{frame_length_x}x{frame_length_y}x{frame_height} {num_pitch} ударов {head_name}.tap'
@@ -172,7 +174,8 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     coefficient_random_offsets = data_dict['Коэффициент случайных смещений']
     speed = data_dict['Скорость движения осей станка']
     order = data_dict["Порядок прохождения рядов"]
-    filename = data_dict["Имя файла"]
+    # filename = data_dict["Имя файла"]
+    on_the_desktop = data_dict["Создание файла на рабочем столе"]
     is_automatic_name = data_dict["Автоматическая генерация имени файла"]
 
     # Вспомогательные параметры
@@ -181,12 +184,14 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     frame_height = int(amount_layers * layer_thickness)
 
     # Открываем файл
-    if is_automatic_name:
-        if selected_type_frame_size == 'По шагам головы':
-            frame_length_x = num_step_x * head_width_x
-            frame_length_y = num_row_y * head_width_y
-        filename = f'{frame_length_x}x{frame_length_y}x{frame_height}x{num_pitch} {head_name}.tap' 
-    gcode_file = open(filename, 'w')
+    path = ''
+    if on_the_desktop:
+        path = r'C:/Users/USER/Desktop/'
+    filename = get_filename(data_dict)
+    if not os.path.exists(path + str(head_name)):
+        os.mkdir(path + str(head_name))
+    gcode_file = open(path + str(head_name) + '/' + filename, 'w')
+    # gcode_file = open(filename, 'w')
 
     # Prehead с описанием файла
     write_to_f(gcode_file, ';\n')
@@ -206,7 +211,8 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     write_to_f(gcode_file, '; {:20}: {}\n'.format('Слои', amount_layers))
     write_to_f(gcode_file, ';\n')
     write_to_f(gcode_file, '; {:20}: {}\n'.format('Количество ударов на 1 слой', num_pitch * num_step_x * num_row_y))
-    write_to_f(gcode_file, '; {:20}: {:,}\n'.format(f'Количество ударов на {amount_layers} слоёв', num_pitch * num_step_x * num_row_y * amount_layers).replace(",", " "))
+    # write_to_f(gcode_file, '; {:20}: {:,}\n'.format(f'Количество ударов на {amount_layers} слоёв', num_pitch * num_step_x * num_row_y * amount_layers).replace(",", " "))
+    write_to_f(gcode_file, '; {:20}: {:}\n'.format(f"Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y)))
     write_to_f(gcode_file, ';\n')
 
     # Установка скорости и начального положения
@@ -286,12 +292,12 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
                 for offs in offset_range:
                     current_x = x + offs[0]
                     current_y = y + offs[1]
+
                     # Если выбран чекбокс "случайные смещения"
                     if is_random_offsets:
                         current_x += coefficient_random_offsets * (random.random() - 0.5) * 2
                         current_y += coefficient_random_offsets * (random.random() - 0.5) * 2
-
-                    
+                   
                     command = f'G1 X{r(current_x)} Y{r(current_y)}'
                     write_to_f(gcode_file, f'{command:16}', str_count_layers)
                     command = f'G1 Z{r(z_offset - needle_depth)}'
@@ -313,7 +319,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         command = f'G1 X{r(start_x)} Y{r(start_y)}'
         write_to_f(gcode_file, f'{command:16}', str_count_layers)
         
-        # Пауза P секунд
+        # Пауза P милисекунд
         command = f'G4 P{r(pause * 1000)}'
         write_to_f(gcode_file, f'{command:16}', str_count_layers)
         
