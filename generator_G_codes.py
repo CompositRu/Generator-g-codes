@@ -108,7 +108,7 @@ def get_message(data_dict):
     if selected_type_frame_size == 'По габаритам':
         message =   (
                         f'Свесы по Х: {overhangs_x}\n'
-                        f'Свесы по Y: {overhangs_x}\n\n'
+                        f'Свесы по Y: {overhangs_y}\n\n'
                         f'Количество шагов по Х: {num_step_x}\n'
                         f'Количество шагов по Y: {num_row_y}\n'
                     )
@@ -183,10 +183,15 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     head_width_y = cell_size_y * needles_y
     frame_height = int(amount_layers * layer_thickness)
 
+    # Определяем количество шагов головы, если каркас задан габаритами
+    if selected_type_frame_size == 'По габаритам':
+        num_step_x = round_to_greater(frame_length_x / head_width_x)
+        num_row_y  = round_to_greater(frame_length_y / head_width_y)
+        
     # Открываем файл
     path = ''
     if on_the_desktop:
-        path = r'C:/Users/USER/Desktop/'
+        path = r'C:/Users/NP_Machine/Desktop/'
     filename = get_filename(data_dict)
     if not os.path.exists(path + str(head_name)):
         os.mkdir(path + str(head_name))
@@ -224,7 +229,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     # Если выбран чекбокс "случайный порядок ударов", то перемешиваем список координат ударов
     if is_random_order:
         random.shuffle(offset_list)
-    
+   
     # Формируем список с порядком прохождения рядов
     rows = list(range(num_row_y))
     if order == 'По очереди':
@@ -242,11 +247,6 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     else:
         raise KeyError('Для данного порядка не написан алгоритм прохождения рядов')
     
-    # Определяем количество шагов головы, если каркас задан габаритами
-    if selected_type_frame_size == 'По габаритам':
-        num_step_x = round_to_greater(frame_length_x / head_width_x)
-        num_row_y  = round_to_greater(frame_length_y / head_width_y)
-
     # Пишем g-коды
     start_hit = 0
     finsh_hit = num_pitch
@@ -263,7 +263,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
                        f";\n; {'<' * 10}   [{layer + 1}] layer (holostoy)  {'>' * 10}\n;\n")
 
         # Подъём головы и выезд на стартовые координаты
-        str_count_layers = f'; {layer + 1}/{amount_layers}\n'
+        str_count_layers = f';{layer + 1}/{amount_layers}\n'
         command = f'G1 Z{r(start_z + z_offset)}'
         write_to_f(gcode_file, f'{command:16}', str_count_layers)
         command = f'G1 X{r(start_x)} Y{r(start_y)}'
