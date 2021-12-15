@@ -6,7 +6,7 @@
 
 
 import random
-from math import ceil as round_to_greater
+from math import ceil as round_to_greater, sqrt
 import os
 
 
@@ -82,6 +82,31 @@ def generate_offset_list(nx, ny, cell_size_x, cell_size_y):
 
 def r(x):
     return round(x, 1)
+
+
+# Алгоритм предполагает, что через (nx * ny) / num_pitch слоёв мы начинаем бить в теже точки
+# Если nx * ny не кратно num_pitch, то каждые несколько слоёв будет идти слой с неполным количество ударов
+# Например, при nx = 5 ny = 10 num_pitch = 20 мы будем получать слои количеством ударов 20, 20, 10, 20, 20, 10...
+def check_nums_x_y(data_dict):
+    nx = data_dict['Параметры паттерна']['nx']
+    ny = data_dict['Параметры паттерна']['ny']
+    num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
+    return (nx * ny) % num_pitch != 0
+
+
+# Подбираем значения nx и ny таким образом, чтобы их произведение было кратно количеству ударов
+# и их отношение было близко к корню из 3
+def get_recomendation_x_y(data_dict):
+    num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
+    # Находим все возмные пары множителей для получения значения N
+    def get_pairs(N):
+        return [(x, int(N / x)) for x in range(1, N) if N % x == 0]
+    # Составляем все комбинаии множителей (коэффициенты 8, 10 и 12 взяты на основании
+    # многолетней практики, инженерной интуиции, сложных вычислений, сотен совещаний и капли гениального интеллекта)
+    pairs = get_pairs(8 * num_pitch) + get_pairs(10 * num_pitch) + get_pairs(12 * num_pitch)
+    # Сортируем пары по приближению отношения коэффициентов x и y к корню из 3
+    pairs.sort(key = lambda pair: abs(pair[0] / pair[1] - sqrt(3)))
+    return pairs[0]
 
 
 def get_message(data_dict):
