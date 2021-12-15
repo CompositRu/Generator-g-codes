@@ -254,7 +254,36 @@ def get_data_for_generating():
     return {**data, **heads}
 
 
+def check_all_conditions(data_dict):
+    # Проверяем наличие всех ключей в json файле
+    message = check_dict_keys(data_dict)
+    if message != '':
+        messagebox.showerror('Отсутствует параметр в json файле', message)
+        return False
+
+    #Проверяем файл
+    if is_opened_file(data_dict["Имя файла"]):
+        messagebox.showerror('Файл открыт в другой программе', f'Закрой файл {data_dict["Имя файла"]}.')  
+        return False
+
+    # Проверяем размер будущего файла   
+    if is_big_size_futute_file(data_dict):
+        res = messagebox.askyesno('Создаётся большой файл', 
+            'Файл с g кодами содержит больше 100 000 ударов. Вы уверены, что хотите его создать?')
+        return res
+
+    return True
+
+
 def click_generate():
+    # Обновляем данные   
+    data_dict = get_data_for_generating()
+
+    # Проверяем входные данные
+    if not check_all_conditions(data_dict):
+        return
+
+    # Окно с progress bar
     win = Toplevel(window)
     win.iconbitmap('symbol.ico')
     def window_deleted():
@@ -263,33 +292,12 @@ def click_generate():
     bar = Progressbar(win, length=300)
     bar.pack()
     centered_win(win)
-    ''' Use thread for showing progress bar in process generating '''
-    threading.Thread(target=lambda : progress_generate(win, bar)).start()
+
+    # Вычисляем g коды в отдельном потоке для отображения progress bar
+    threading.Thread(target=lambda : progress_generate(win, bar, data_dict)).start()
 
 
 def progress_generate(win_with_progress, bar):
-    # Обновляем данные   
-    data_dict = get_data_for_generating()
-
-    # Проверяем наличие всех ключей в json файле
-    message = check_dict_keys(data_dict)
-    if message != '':
-        messagebox.showerror('Отсутствует в json файле', message)
-        return
-
-    #Проверяем файл
-    if is_opened_file(data_dict["Имя файла"]):  
-        return
-
-    # Проверяем размер будущего файла   
-    if is_big_size_futute_file(data_dict):
-        res = messagebox.askyesno('Создаётся большой файл', 
-            'Файл с g кодами содержит больше 100 000 ударов. Вы уверены, что хотите его создать?')
-        win_with_progress.lift()
-        if res == False:
-            win_with_progress.destroy()
-            return
-
     # Создаём функцию для отображения процесса на progressbar
     def display_progress(progress):
         bar['value'] = progress
