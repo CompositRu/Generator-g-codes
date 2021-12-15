@@ -28,14 +28,14 @@ def is_opened_file(filename):
 
 def centered_win(win):
     win.update_idletasks()
-    positionRight = int(win.winfo_screenwidth()/2 - win.winfo_reqwidth()/2)
-    positionDown = int(win.winfo_screenheight()/2 - win.winfo_reqheight()/2) - 30
-    win.geometry("+{}+{}".format(positionRight, positionDown))
+    positionRight = int(win.winfo_screenwidth() / 2 - win.winfo_reqwidth() / 2)
+    positionDown = int(win.winfo_screenheight() / 2 - win.winfo_reqheight() / 2) - 30
+    win.geometry(f'+{positionRight}+{positionDown}')
 
 
 def set_text(text_field, text):
-    text_field.delete(0,END)
-    text_field.insert(0,text)
+    text_field.delete(0, END)
+    text_field.insert(0, text)
 
 
 def recursion_saver(widget_dict):
@@ -56,7 +56,8 @@ def recursion_saver(widget_dict):
                         data_dict[section] = float(item.get())
                     except ValueError:
                         print(section, item)
-                        messagebox.showerror('Смотри, что пишешь!', item.get() + ' не является числом')
+                        messagebox.showerror('Смотри, что пишешь!',  f'Значение {item.get()} параметра {section}  не является числом')
+                        raise ValueError
             else:
                 data_dict[section] = item.get()
     return data_dict
@@ -219,11 +220,11 @@ def click_setup():
                         text = 'Сохранить', 
                         bg='ivory4', 
                         command = save_data_heads)
-    save_button.grid(columnspan = len(heads['Количество рядов игл на голове'])*2, 
-                    row=7, 
-                    sticky=W+E, 
-                    padx=10, 
-                    pady=10)
+    save_button.grid(columnspan = len(heads['Количество рядов игл на голове']) * 2, 
+                    row = 7, 
+                    sticky = W + E, 
+                    padx = 10, 
+                    pady = 10)
     centered_win(win)
     win.resizable(False, False)
 
@@ -231,11 +232,11 @@ def click_setup():
 def is_big_size_futute_file(data_dict):
     ''' For warning user that future file will be big '''
     l = data_dict['Количество слоёв']
-    i = data_dict['Количество пустых слоёв']
+    e = data_dict['Количество пустых слоёв']
     x = data_dict['Количество шагов головы']['X']
     y = data_dict['Количество шагов головы']['Y']
     n = data_dict['Параметры паттерна']['Кол-во ударов']
-    hits = (l + i) * x * y * n
+    hits = (l + e) * x * y * n
     if hits > 100000:
         return True
     return False
@@ -286,7 +287,10 @@ def check_all_conditions(data_dict):
 
 def click_generate():
     # Обновляем данные   
-    data_dict = get_data_for_generating()
+    try:
+        data_dict = get_data_for_generating()
+    except ValueError:
+        return
 
     # Проверяем входные данные
     if not check_all_conditions(data_dict):
@@ -343,29 +347,31 @@ def display_parameters_recursion(frame, data_dict, i_row):
 
 
 def change_visible():
+    group_1 = [wd_left['Количество шагов головы']['X'],
+               wd_left['Количество шагов головы']['Y'],
+               wd_labels['Количество шагов головы']['X'],
+               wd_labels['Количество шагов головы']['Y'],
+               wd_labels['Количество шагов головы label']]
+    group_2 = [wd_left['Габариты каркаса']['X'],
+               wd_left['Габариты каркаса']['Y'],
+               wd_labels['Габариты каркаса']['X'],
+               wd_labels['Габариты каркаса']['Y'],
+               wd_labels['Габариты каркаса label']]
+
+    def group_grid_remove(group):
+        for item in group:
+            item.grid_remove()
+    def group_grid(group):
+        for item in group:
+            item.grid()
+
     n = wd_left['Номер радиокнопки типа задания размера каркаса'].get()
     if n == 1:
-        wd_left['Количество шагов головы']['X'].grid_remove()
-        wd_left['Количество шагов головы']['Y'].grid_remove()
-        wd_left['Габариты каркаса']['X'].grid()
-        wd_left['Габариты каркаса']['Y'].grid()
-        wd_labels['Количество шагов головы']['X'].grid_remove()
-        wd_labels['Количество шагов головы']['Y'].grid_remove()
-        wd_labels['Количество шагов головы label'].grid_remove()
-        wd_labels['Габариты каркаса']['X'].grid()
-        wd_labels['Габариты каркаса']['Y'].grid()
-        wd_labels['Габариты каркаса label'].grid()
+        group_grid_remove(group_1)
+        group_grid(group_2)
     else:
-        wd_left['Количество шагов головы']['X'].grid()
-        wd_left['Количество шагов головы']['Y'].grid()
-        wd_left['Габариты каркаса']['X'].grid_remove()
-        wd_left['Габариты каркаса']['Y'].grid_remove()
-        wd_labels['Количество шагов головы']['X'].grid()
-        wd_labels['Количество шагов головы']['Y'].grid()
-        wd_labels['Количество шагов головы label'].grid()
-        wd_labels['Габариты каркаса']['X'].grid_remove()
-        wd_labels['Габариты каркаса']['Y'].grid_remove()
-        wd_labels['Габариты каркаса label'].grid_remove()
+        group_grid_remove(group_2)
+        group_grid(group_1)
 
 def display_parameters(frame, data_dict, i_row):
     part_data_dict = {}
@@ -580,7 +586,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.4")
+    window.title("Генератор G кодов для ИП станка v.1.5")
     window.iconbitmap('symbol.ico')
 
     window.columnconfigure(0, weight=1)
