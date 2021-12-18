@@ -10,11 +10,6 @@ from math import ceil as round_to_greater, sqrt
 import os
 
 
-def write_to_f(file_name, *args):
-    for arg in args:
-        file_name.write(str(arg))
-
-
 def check_dict_keys(data_dict):
     base_list = ["Количество слоёв",
                 "Количество слоёв",
@@ -180,6 +175,25 @@ def get_filename_path_and_create_directory_if_need(data_dict):
     return path
 
 
+def get_ordered_list_of_rows(num_row_y, order):
+    rows = list(range(num_row_y, ))
+    if order == 'По очереди':
+        pass
+    elif order == 'Сначала чётные':
+        rows = rows[1::2] + rows[::2]
+    elif order == 'Сначала нечётные':
+        rows = rows[::2] + rows[1::2] 
+    elif order == 'Из центра':
+        center = (len(rows) - 1) // 2
+        rows = rows[center::-1] + rows[center + 1:]
+    elif order == 'В центр':
+        center = (len(rows) - 1) // 2
+        rows = rows[:center] + rows[:center - 1:-1]
+    else:
+        raise KeyError('Для данного порядка не написан алгоритм прохождения рядов')
+    return rows
+
+
 def generate_G_codes_file(data_dict, display_percent_progress_func):
     cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
@@ -228,52 +242,43 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     gcode_file = open(path, 'w')
 
     # Prehead с описанием файла
-    write_to_f(gcode_file, ';\n')
-    write_to_f(gcode_file, '; {:20}: {}\n'.format('ИП голова', head_name))
-    write_to_f(gcode_file, ';\n')
-    write_to_f(gcode_file, '; {:20}: {}\n'.format('Иглы по Х', needles_x))
-    write_to_f(gcode_file, '; {:20}: {}\n'.format('Иглы по Y', needles_y))
-    write_to_f(gcode_file, ';\n')
+    write_empty_line = lambda : gcode_file.write(';\n')
+    string_field_width = 20
+    write_info_to_prehead = lambda name, value : gcode_file.write(f'; {name:{string_field_width}}: {value}\n')       
+
+    write_empty_line()
+    write_info_to_prehead('ИП голова', head_name)
+    write_empty_line()
+    write_info_to_prehead('Иглы по Х', needles_x)
+    write_info_to_prehead('Иглы по Y', needles_y)
+    write_empty_line()
     if selected_type_frame_size == 'По габаритам':
-        write_to_f(gcode_file, '; {:20}: {}\n'.format('Длина каркаса по X', frame_length_x))
-        write_to_f(gcode_file, '; {:20}: {}\n'.format('Длина каркаса по Y', frame_length_y))
+        write_info_to_prehead('Длина каркаса по X', frame_length_x)
+        write_info_to_prehead('Длина каркаса по Y', frame_length_y)
     else:
-        write_to_f(gcode_file, '; {:20}: {}\n'.format('Шаги по X', num_step_x))
-        write_to_f(gcode_file, '; {:20}: {}\n'.format('Шаги по Y', num_row_y))
-    write_to_f(gcode_file, '; {:20}: {}\n'.format('Высота каркаса по Z', int(frame_height)))
-    write_to_f(gcode_file, ';\n')
-    write_to_f(gcode_file, '; {:20}: {}\n'.format('Слои', amount_layers))
-    write_to_f(gcode_file, ';\n')
-    write_to_f(gcode_file, '; {:20}: {}\n'.format('Количество ударов на 1 слой', num_pitch * num_step_x * num_row_y))
-    write_to_f(gcode_file, '; {:20}: {:}\n'.format(f"Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y)))
-    write_to_f(gcode_file, ';\n')
+        write_info_to_prehead('Шаги по X', num_step_x)
+        write_info_to_prehead('Шаги по Y', num_row_y)
+    write_info_to_prehead('Высота каркаса по Z', int(frame_height))
+    write_empty_line()
+    write_info_to_prehead('Слои', amount_layers)
+    write_empty_line()
+    string_field_width = 35
+    write_info_to_prehead('Количество ударов на 1 слой', num_pitch * num_step_x * num_row_y)
+    write_info_to_prehead("Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y))
+    write_empty_line()
 
     # Установка скорости и начального положения
     gcode_file.write(f'F {speed:.1f}\n')
 
-    # Вспомогательные параметры
+    # Формируем паттерн пробивки
     offset_list = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
 
     # Если выбран чекбокс "случайный порядок ударов", то перемешиваем список координат ударов
     if is_random_order:
         random.shuffle(offset_list)
    
-    # Формируем список с порядком прохождения рядов
-    rows = list(range(num_row_y))
-    if order == 'По очереди':
-        pass
-    elif order == 'Сначала чётные':
-        rows = rows[1::2] + rows[::2]
-    elif order == 'Сначала нечётные':
-        rows = rows[::2] + rows[1::2] 
-    elif order == 'Из центра':
-        center = (len(rows) - 1) // 2
-        rows = rows[center::-1] + rows[center + 1:]
-    elif order == 'В центр':
-        center = (len(rows) - 1) // 2
-        rows = rows[:center] + rows[:center - 1:-1]
-    else:
-        raise KeyError('Для данного порядка не написан алгоритм прохождения рядов')
+    # Формируем список с номерами рядов в порядке их прохождения
+    rows = get_ordered_list_of_rows(num_row_y, order)
     
     # Пишем g-коды
     start_hit = 0
@@ -283,24 +288,19 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         z_offset = layer_thickness * layer
         
         # Комментарий с номером слоя
-        if layer < amount_layers:
-            write_to_f(gcode_file, 
-                       f";\n; {'<' * 10}   [{layer + 1}] layer   {'>' * 10}\n;\n")
-        else:
-            write_to_f(gcode_file, 
-                       f";\n; {'<' * 10}   [{layer + 1}] layer (holostoy)  {'>' * 10}\n;\n")
+        layer_type = 'layer' if layer < amount_layers else 'layer (holostoy)'
+        gcode_file.write(f";\n; {'<' * 10} [{layer + 1}] {layer_type} {'>' * 10}\n;\n")
 
         # Подъём головы и выезд на стартовые координаты
         str_count_layers = f';{layer + 1}/{amount_layers}\n'
-        command = f'G1 Z{r(start_z + z_offset)}'
-        write_to_f(gcode_file, f'{command:16}', str_count_layers)
-        command = f'G1 X{r(start_x)} Y{r(start_y)}'
-        write_to_f(gcode_file, f'{command:16}', str_count_layers)
+        write_g_code_line = lambda line: gcode_file.write(f'{line:{16}}{str_count_layers}')
+
+        write_g_code_line(f'G1 Z{r(start_z + z_offset)}')
+        write_g_code_line(f'G1 X{r(start_x)} Y{r(start_y)}')
 
         # Цикл рядов по Y
         for row in rows:
             y = head_width_y * row
-            x = 0
 
             # Цикл шагов по Х
             step_range = list(range(num_step_x))
@@ -308,7 +308,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
                 step_range = reversed(step_range)
 
             for step in step_range:
-                x = 0 + head_width_x * step
+                x = head_width_x * step
 
                 # Цикл микрошагов внутри ячейки между иглами
                 # Нанесение num_pitch ударов каждой иглой в область
@@ -317,21 +317,18 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
                 if is_rotation_direction and (layer + 1) % 2:
                     offset_range = reversed(offset_range)
 
-                for offs in offset_range:
-                    current_x = x + offs[0]
-                    current_y = y + offs[1]
+                for offs_x, offs_y in offset_range:
+                    current_x = x + offs_x
+                    current_y = y + offs_y
 
                     # Если выбран чекбокс "случайные смещения"
                     if is_random_offsets:
                         current_x += coefficient_random_offsets * (random.random() - 0.5) * 2
                         current_y += coefficient_random_offsets * (random.random() - 0.5) * 2
-                   
-                    command = f'G1 X{r(current_x)} Y{r(current_y)}'
-                    write_to_f(gcode_file, f'{command:16}', str_count_layers)
-                    command = f'G1 Z{r(z_offset - needle_depth)}'
-                    write_to_f(gcode_file, f'{command:16}', str_count_layers)
-                    command = f'G1 Z{r(dist_to_material + z_offset)}'
-                    write_to_f(gcode_file, f'{command:16}', str_count_layers)
+                    
+                    write_g_code_line(f'G1 X{r(current_x)} Y{r(current_y)}')
+                    write_g_code_line(f'G1 Z{r(z_offset - needle_depth)}')
+                    write_g_code_line(f'G1 Z{r(dist_to_material + z_offset)}')
                 
         # Смещение координат ударов на новом слое
         if (finsh_hit < len(offset_list)):
@@ -342,14 +339,11 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
             finsh_hit = num_pitch
 
         # Подъём головы и отъезд на стартовые координаты
-        command = f'G1 Z{r(start_z + z_offset)}'
-        write_to_f(gcode_file, f'{command:16}', str_count_layers)
-        command = f'G1 X{r(start_x)} Y{r(start_y)}'
-        write_to_f(gcode_file, f'{command:16}', str_count_layers)
+        write_g_code_line(f'G1 Z{r(start_z + z_offset)}')
+        write_g_code_line(f'G1 X{r(start_x)} Y{r(start_y)}')
         
         # Пауза P милисекунд
-        command = f'G4 P{r(pause * 1000)}'
-        write_to_f(gcode_file, f'{command:16}', str_count_layers)
+        write_g_code_line(f'G4 P{r(pause * 1000)}')
         
         #Отображаем процесс на progressbar
         display_percent_progress_func(layer / (amount_layers + amount_virtual_layers) * 100)
