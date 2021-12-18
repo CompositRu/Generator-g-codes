@@ -296,7 +296,7 @@ def click_generate():
     bar.pack()
     centered_win(win)
 
-    # Вычисляем g коды в отдельном потоке для отображения progress bar
+    # Вычисляем g коды в отдельном потоке для отображения прогресса на progress bar
     threading.Thread(target=lambda : progress_generate(win, bar, data_dict)).start()
 
 
@@ -485,17 +485,21 @@ def display_radiobuttons(frame):
 
 def change_visible_filename():
     n = wd_left['Автоматическая генерация имени файла'].get()
-    if n == 0:
-        wd_left['Имя файла'].config(state='normal')
-    else:
-        wd_left['Имя файла'].config(state='disabled')
+    state = 'normal' if n == 0 else 'disabled'
+    wd_left['Имя файла'].config(state=state)
 
 
 def display_right_side_bottom(frame):
-    var1 = BooleanVar()
-    var1.set(second_dict["Случайный порядок ударов"])
-    chkb1 = Checkbutton(right_desk, text="Случайный порядок ударов", variable=var1, font=("Arial Bold", 10, 'bold'))
-    chkb1.grid(columnspan=2, row=11, sticky=W)
+    widget_dict = {}
+    def create_check_box(section, row, func = None):
+        v = BooleanVar()
+        v.set(second_dict[section])
+        widget_dict[section] = v
+        checkbox = Checkbutton(right_desk, text=section, variable=v, font=("Arial Bold", 10, 'bold'), command=func)
+        checkbox.grid(columnspan=2, row=row, sticky=W)
+
+    create_check_box("Случайный порядок ударов", 11)
+    create_check_box("Случайные смещения", 12)
 
     lab = Label(right_desk, text = "Коэффициент")
     lab.grid(column=0, row=13)
@@ -504,29 +508,14 @@ def display_right_side_bottom(frame):
     text_field1.grid(column=1, row=13)
     set_text(text_field1, second_dict["Коэффициент случайных смещений"])
 
-    var2 = BooleanVar()
-    var2.set(second_dict["Случайные смещения"])
-    chkb2 = Checkbutton(right_desk, text="Случайные смещения", variable=var2, font=("Arial Bold", 10, 'bold'))
-    chkb2.grid(columnspan=2, row=12, sticky=W)
-   
-    var3 = BooleanVar()
-    var3.set(second_dict["Чередование направлений прохода слоя"])
-    chkb3 = Checkbutton(right_desk, text="Чередование направлений прохода слоя", variable=var3, font=("Arial Bold", 10, 'bold'))
-    chkb3.grid(columnspan=2, row=14, sticky=W)
+    create_check_box("Чередование направлений прохода слоя", 14)
 
     '''label_empty = Label(right_desk)
     label_empty.grid(columnspan=2, row=15, sticky=N+S)
     frame.rowconfigure(15, weight=1) # Эта строка нужна, чтобы виджет мог растягиваться '''
 
-    var4 = BooleanVar()
-    var4.set(second_dict["Создание файла на рабочем столе"])
-    chkb4 = Checkbutton(right_desk, text="Создание файла на рабочем столе", variable=var4, font=("Arial Bold", 10, 'bold'))
-    chkb4.grid(columnspan=2, row=15, sticky=W)
-
-    var5 = BooleanVar()
-    var5.set(second_dict["Автоматическая генерация имени файла"])
-    chkb5 = Checkbutton(right_desk, text="Автоматическая генерация имени файла", variable=var5, font=("Arial Bold", 10, 'bold'), command=change_visible_filename)
-    chkb5.grid(columnspan=2, row=16, sticky=W)
+    create_check_box("Создание файла на рабочем столе", 15)
+    create_check_box("Автоматическая генерация имени файла", 16, change_visible_filename)
 
     bt_save = Button(right_desk, text='Сохранить', width = 15, bg='ivory4', command=click_save)
     bt_save.grid(column=0, row=17, padx=3, pady=3, sticky=W+E)
@@ -544,12 +533,6 @@ def display_right_side_bottom(frame):
     bt_generate = Button(right_desk, text='Генерировать g-code файл', bg='lime green', command=click_generate)
     bt_generate.grid(columnspan=2, row=22, padx=3, pady=3, sticky=W+E)
 
-    widget_dict = {}
-    widget_dict["Случайный порядок ударов"] = var1
-    widget_dict["Случайные смещения"] = var2
-    widget_dict["Чередование направлений прохода слоя"] = var3
-    widget_dict["Создание файла на рабочем столе"] = var4
-    widget_dict["Автоматическая генерация имени файла"] = var5
     widget_dict["Коэффициент случайных смещений"] = text_field1
     widget_dict["Имя файла"] = text_field2
 
@@ -563,44 +546,51 @@ if __name__ == "__main__":
     filename = data.pop("Имя файла")
 
     second_dict = {}
-    second_dict["Случайный порядок ударов"] = data.pop("Случайный порядок ударов")
-    second_dict["Случайные смещения"] = data.pop("Случайные смещения")
-    second_dict["Коэффициент случайных смещений"] = data.pop("Коэффициент случайных смещений")
-    second_dict["Чередование направлений прохода слоя"] = data.pop("Чередование направлений прохода слоя")
-    second_dict["Автоматическая генерация имени файла"] = data.pop("Автоматическая генерация имени файла")
-    second_dict["Создание файла на рабочем столе"] = data.pop("Создание файла на рабочем столе")
+    error_message = ''
+    order_list, selected_order, type_frame_size_list, selected_type_frame_size = None, None, None, None
+    try:
+        second_dict["Случайный порядок ударов"] = data.pop("Случайный порядок ударов")
+        second_dict["Случайные смещения"] = data.pop("Случайные смещения")
+        second_dict["Коэффициент случайных смещений"] = data.pop("Коэффициент случайных смещений")
+        second_dict["Чередование направлений прохода слоя"] = data.pop("Чередование направлений прохода слоя")
+        second_dict["Автоматическая генерация имени файла"] = data.pop("Автоматическая генерация имени файла")
+        second_dict["Создание файла на рабочем столе"] = data.pop("Создание файла на рабочем столе")
 
-    order_list = data.pop("Список вариантов порядка прохождения рядов")
-    selected_order = data.pop("Порядок прохождения рядов")
-    type_frame_size_list = data.pop("Список вариантов задания размеров каркаса")
-    selected_type_frame_size = data.pop("Задание размеров каркаса")
+        order_list = data.pop("Список вариантов порядка прохождения рядов")
+        selected_order = data.pop("Порядок прохождения рядов")
+        type_frame_size_list = data.pop("Список вариантов задания размеров каркаса")
+        selected_type_frame_size = data.pop("Задание размеров каркаса")
+    except KeyError as ke:
+        error_message = f'В data.json файле не хватает параметра {ke}'
 
     #Открываем файл с конфигами голов
     with open('heads.json', 'r', encoding='utf-8-sig') as f:
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.5")
+    window.title("Генератор G кодов для ИП станка v.1.6")
     window.iconbitmap('symbol.ico')
 
-    window.columnconfigure(0, weight=1)
-    window.columnconfigure(1, weight=1)
-    window.rowconfigure(0, weight=1)
+    if error_message == '':
+        window.columnconfigure(0, weight=1)
+        window.columnconfigure(1, weight=1)
+        window.rowconfigure(0, weight=1)
 
-    left_desk = Frame(window, padx=5, pady=5)
-    left_desk.grid(column=0, row=0, sticky=N+S)
-    right_desk = Frame(window, padx=5, pady=5)
-    right_desk.grid(column=1, row=0, sticky=N+S)
+        left_desk = Frame(window, padx=5, pady=5)
+        left_desk.grid(column=0, row=0, sticky=N+S)
+        right_desk = Frame(window, padx=5, pady=5)
+        right_desk.grid(column=1, row=0, sticky=N+S)
 
-    wd_left, wd_labels = display_parameters(left_desk,  data, 0)
-    change_visible()
-    wd_right = display_right_side_top(right_desk)
-    wd_left["Номер радиокнопки для порядка рядов"] = display_radiobuttons(right_desk)
-    wd_right_bottom = display_right_side_bottom(right_desk)
-    wd_left = {**wd_left, **wd_right_bottom}
-    change_visible_filename()
+        wd_left, wd_labels = display_parameters(left_desk,  data, 0)
+        change_visible()
+        wd_right = display_right_side_top(right_desk)
+        wd_left["Номер радиокнопки для порядка рядов"] = display_radiobuttons(right_desk)
+        wd_right_bottom = display_right_side_bottom(right_desk)
+        wd_left = {**wd_left, **wd_right_bottom}
+        change_visible_filename()
+    else:
+        messagebox.showerror('Отсутствует параметр в json файле', error_message)
     
-
     centered_win(window)
     window.resizable(False, False)
     window.mainloop()
