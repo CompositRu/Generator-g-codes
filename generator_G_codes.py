@@ -29,7 +29,7 @@ def check_dict_keys(data_dict):
                 "Чередование направлений прохода слоя",
                 "Автоматическая генерация имени файла"]
     heads_list = ["Количество рядов игл на голове", "Выбранная голова"]
-    pattern_list = ['nx', 'ny', 'Кол-во ударов']
+    pattern_list = ['Кол-во ударов']
     xy_list = ['X', 'Y']
     xyz_list = ['X', 'Y', 'Z']
     head_parameters_list = ['X', 'Y', 'path']
@@ -88,17 +88,19 @@ def check_nums_x_y(data_dict):
 
 # Подбираем значения nx и ny таким образом, чтобы их произведение было кратно количеству ударов
 # и их отношение максимально было близко к корню из 3 пополам (или обратной величине)
-def get_recomendation_x_y(data_dict):
-    num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
+def get_nx_ny(num_pitch):
     # Находим все возмные пары множителей для получения значения N
     def get_pairs(N):
         return [(x, int(N / x)) for x in range(1, N) if N % x == 0]
-    # Составляем все комбинаии множителей (коэффициенты 8, 10 и 12 взяты на основании
-    # многолетней практики, инженерной интуиции, сложных вычислений, сотен совещаний и капли гениального интеллекта)
-    pairs = get_pairs(8 * num_pitch) + get_pairs(10 * num_pitch) + get_pairs(12 * num_pitch)
+    # Составляем все комбинаии множителей (коэффициенты 5, 6, 8, 10 и 12 взяты на основании
+    # многолетней практики, инженерной интуиции, сложных вычислений и капли гениального интеллекта
+    gp = lambda n: get_pairs(n * num_pitch)
+    pairs = gp(5) + gp(6) + gp(8) + gp(10) + gp(12)
     # Сортируем пары по приближению отношения коэффициентов x и y к корню из 3 пополам
+    # Берём обратную величину, т.к. для правильного паттерна требуется nx > ny
+    # Правильный паттерн - треугольники максимально приближенны к равносторонним
     k = sqrt(3) / 2
-    pairs.sort(key = lambda pair: abs(pair[0] / pair[1] - k))
+    pairs.sort(key = lambda pair: abs(pair[0] / pair[1] - 1 / k))
     return pairs[0]
 
 
@@ -197,8 +199,6 @@ def get_ordered_list_of_rows(num_row_y, order):
 def generate_G_codes_file(data_dict, display_percent_progress_func):
     cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
-    nx = data_dict['Параметры паттерна']['nx']
-    ny = data_dict['Параметры паттерна']['ny']
     num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
     num_step_x = data_dict['Количество шагов головы']['X']
     num_row_y = data_dict['Количество шагов головы']['Y']
@@ -223,9 +223,11 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     coefficient_random_offsets = data_dict['Коэффициент случайных смещений']
     speed = data_dict['Скорость движения осей станка']
     order = data_dict["Порядок прохождения рядов"]
-    # filename = data_dict["Имя файла"]
     on_the_desktop = data_dict["Создание файла на рабочем столе"]
     is_automatic_name = data_dict["Автоматическая генерация имени файла"]
+
+    # Вычисляем параметры паттерна
+    nx, ny = get_nx_ny(num_pitch)
 
     # Вспомогательные параметры
     head_width_x = cell_size_x * needles_x
@@ -265,6 +267,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     string_field_width = 35
     write_info_to_prehead('Количество ударов на 1 слой', num_pitch * num_step_x * num_row_y)
     write_info_to_prehead("Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y))
+    write_empty_line()
+    write_info_to_prehead("Параметры паттерна nx, ny", f'{nx}, {ny}')
+    gcode_file.write(f'; Через каждые {int(nx * ny / num_pitch)} слоёв бьём в теже точки\n') 
     write_empty_line()
 
     # Установка скорости и начального положения

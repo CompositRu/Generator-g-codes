@@ -266,16 +266,6 @@ def check_all_conditions(data_dict):
         messagebox.showerror('Файл открыт в другой программе', f'Закрой файл {data_dict["Имя файла"]}.')  
         return False
 
-    #Проверяем параметры паттерна
-    if check_nums_x_y(data_dict):
-        nx = data_dict['Параметры паттерна']['nx']
-        ny = data_dict['Параметры паттерна']['ny']
-        num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
-        rx, ry = get_recomendation_x_y(data_dict)
-        messagebox.showerror('Неверно заданы параметры паттерна', f'Произведение параметровв nx и ny ({nx} * {ny} = {nx * ny}) \
-не кратно количеству ударов ({num_pitch}). Рекомендуется использовать значения nx = {rx} и ny = {ry}')
-        return False
-
     # Проверяем размер будущего файла   
     if is_big_size_futute_file(data_dict):
         res = messagebox.askyesno('Создаётся большой файл', 
