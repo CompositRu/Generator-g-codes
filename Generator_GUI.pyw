@@ -171,7 +171,7 @@ def click_setup():
     add_button = Button(win, 
                         text = 'Добавить голову', 
                         command = add_widget)
-    add_button.grid(columnspan = len(heads['Количество рядов игл на голове'])*2, 
+    add_button.grid(columnspan = len(heads['Количество рядов игл на голове'])*2,
                     row=6, 
                     sticky=W+E, 
                     padx=10, 
@@ -186,22 +186,22 @@ def click_setup():
         for head, widget in widgets.items():
             try:
                 x = int(widget['X'].get())
-                y = int(widget['Y'].get())            
+                y = int(widget['Y'].get())
             except ValueError:
                 messagebox.showerror('Смотри, что пишешь!', 'Количеством игл может быть только целое число')
                 return
 
         heads["Количество рядов игл на голове"].clear()
-        head_needles = heads["Количество рядов игл на голове"]    
+        head_needles = heads["Количество рядов игл на голове"]
  
         # Сохранение данных
         for head, widget in widgets.items():
-            head_name = widget['head_name'].get()           
+            head_name = widget['head_name'].get()
             head_needles[head_name] = {}
             head_data = head_needles[head_name] 
             head_data['X'] = int(widget['X'].get())
-            head_data['Y'] = int(widget['Y'].get())            
-            head_data['path'] = widget['path'].get()  
+            head_data['Y'] = int(widget['Y'].get())
+            head_data['path'] = widget['path'].get()
 
         write_to_json_file('heads.json', heads)
 
@@ -316,8 +316,13 @@ def progress_generate(win_with_progress, bar, data_dict):
         bar['value'] = progress
     
     # Генерируем
-    generate_G_codes_file(data_dict, display_progress)
-    
+    try:
+        generate_G_codes_file(data_dict, display_progress)
+    except BaseException as e:
+        win_with_progress.destroy()
+        messagebox.showerror('Всё. Херня. Звони Артёму', e)
+        return
+
     # Закрываем окно
     win_with_progress.destroy()
     messagebox.showinfo('Всё прошло удачно', f"Сгенерирован файл\n{get_filename(data_dict)}\n\n{get_message(data_dict)}" ) 
@@ -439,16 +444,16 @@ def change_pic(event):
 
 
 def display_right_side_top(frame):
-    canvas = Canvas(frame, width = 200, height = 200)      
+    canvas = Canvas(frame, width = 200, height = 200)
     canvas.grid(columnspan=2, row=0)
     
-    lab = Label(frame, text="ИП голова:", padx= 20, font=("Arial Bold", 10))   
+    lab = Label(frame, text="ИП голова:", padx= 20, font=("Arial Bold", 10))
     lab.grid(column=0, row=1)
 
     val = []
     for section, item in heads["Количество рядов игл на голове"].items():
         val.append(section)
-    combo = Combobox(frame, width = 10, values=val, state='readonly')  
+    combo = Combobox(frame, width = 10, values=val, state='readonly')
     combo.current(val.index(heads["Выбранная голова"]))  
     combo.grid(column=1, row=1)
 
@@ -521,7 +526,7 @@ def display_right_side_bottom(frame):
 
     '''label_empty = Label(right_desk)
     label_empty.grid(columnspan=2, row=15, sticky=N+S)
-    frame.rowconfigure(15, weight=1) # Эта строка нужна, чтобы виджет мог растягиваться '''  
+    frame.rowconfigure(15, weight=1) # Эта строка нужна, чтобы виджет мог растягиваться '''
 
     var4 = BooleanVar()
     var4.set(second_dict["Создание файла на рабочем столе"])
@@ -559,7 +564,6 @@ def display_right_side_bottom(frame):
     widget_dict["Имя файла"] = text_field2
 
     return widget_dict
-
 
 if __name__ == "__main__":
     #Открываем файл с конфигами
@@ -610,4 +614,3 @@ if __name__ == "__main__":
     centered_win(window)
     window.resizable(False, False)
     window.mainloop()
-

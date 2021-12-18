@@ -69,14 +69,11 @@ def generate_offset_list(nx, ny, cell_size_x, cell_size_y):
     snake_step = 1.5 * offset_y # коэффициент 1.5 взят с потолка
     offset_list = []
     for j in range(ny):
-        flag = False
         for i in range(nx):
             x = offset_x * i
             y = offset_y * j
-            if flag:
-                y += snake_step
+            y = y + snake_step if j % 2 != 0 else y
             offset_list.append([x, y])
-            flag = not flag
     return offset_list
 
 
@@ -95,7 +92,7 @@ def check_nums_x_y(data_dict):
 
 
 # Подбираем значения nx и ny таким образом, чтобы их произведение было кратно количеству ударов
-# и их отношение было близко к корню из 3
+# и их отношение максимально было близко к корню из 3 пополам (или обратной величине)
 def get_recomendation_x_y(data_dict):
     num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
     # Находим все возмные пары множителей для получения значения N
@@ -104,8 +101,9 @@ def get_recomendation_x_y(data_dict):
     # Составляем все комбинаии множителей (коэффициенты 8, 10 и 12 взяты на основании
     # многолетней практики, инженерной интуиции, сложных вычислений, сотен совещаний и капли гениального интеллекта)
     pairs = get_pairs(8 * num_pitch) + get_pairs(10 * num_pitch) + get_pairs(12 * num_pitch)
-    # Сортируем пары по приближению отношения коэффициентов x и y к корню из 3
-    pairs.sort(key = lambda pair: abs(pair[0] / pair[1] - sqrt(3)))
+    # Сортируем пары по приближению отношения коэффициентов x и y к корню из 3 пополам
+    k = sqrt(3) / 2
+    pairs.sort(key = lambda pair: abs(pair[0] / pair[1] - k))
     return pairs[0]
 
 
@@ -114,7 +112,7 @@ def get_message(data_dict):
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
     head_name = data_dict['Выбранная голова']
     needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
-    needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']    
+    needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']
     frame_length_x = data_dict['Габариты каркаса']['X']
     frame_length_y = data_dict['Габариты каркаса']['Y']
     selected_type_frame_size = data_dict['Задание размеров каркаса']
@@ -145,13 +143,13 @@ def get_filename(data_dict):
     if is_automatic_name == False:
         return data_dict["Имя файла"]
     else:        
-        head_name = data_dict['Выбранная голова']          
+        head_name = data_dict['Выбранная голова']
         frame_length_x = data_dict['Габариты каркаса']['X']
         frame_length_y = data_dict['Габариты каркаса']['Y']
-        selected_type_frame_size = data_dict['Задание размеров каркаса']       
+        selected_type_frame_size = data_dict['Задание размеров каркаса']
         amount_layers = data_dict['Количество слоёв']
         layer_thickness = data_dict['Толщина слоя (мм)']
-        num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']        
+        num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
         
         frame_height = int(amount_layers * layer_thickness)
 
@@ -168,6 +166,18 @@ def get_filename(data_dict):
             frame_length_x = num_step_x * head_width_x
             frame_length_y = num_row_y * head_width_y
         return f'{frame_length_x}x{frame_length_y}x{frame_height} {num_pitch} ударов {head_name}.tap'
+
+
+def get_filename_path_and_create_directory_if_need(data_dict):
+    on_the_desktop = data_dict["Создание файла на рабочем столе"]
+    head_name = data_dict['Выбранная голова']
+    path_desktop = os.path.join(r'C:\Users', os.getlogin(), 'Desktop') if on_the_desktop else ''
+    path_head = os.path.join(path_desktop, head_name)
+    filename = get_filename(data_dict)
+    if not os.path.exists(path_head):
+        os.mkdir(path_head)
+    path = os.path.join(path_desktop, head_name, filename)
+    return path
 
 
 def generate_G_codes_file(data_dict, display_percent_progress_func):
@@ -214,14 +224,8 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         num_row_y  = round_to_greater(frame_length_y / head_width_y)
         
     # Открываем файл
-    path = ''
-    if on_the_desktop:
-        path = r'C:/Users/NP_Machine/Desktop/'
-    filename = get_filename(data_dict)
-    if not os.path.exists(path + str(head_name)):
-        os.mkdir(path + str(head_name))
-    gcode_file = open(path + str(head_name) + '/' + filename, 'w')
-    # gcode_file = open(filename, 'w')
+    path = get_filename_path_and_create_directory_if_need(data_dict)
+    gcode_file = open(path, 'w')
 
     # Prehead с описанием файла
     write_to_f(gcode_file, ';\n')
@@ -241,7 +245,6 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     write_to_f(gcode_file, '; {:20}: {}\n'.format('Слои', amount_layers))
     write_to_f(gcode_file, ';\n')
     write_to_f(gcode_file, '; {:20}: {}\n'.format('Количество ударов на 1 слой', num_pitch * num_step_x * num_row_y))
-    # write_to_f(gcode_file, '; {:20}: {:,}\n'.format(f'Количество ударов на {amount_layers} слоёв', num_pitch * num_step_x * num_row_y * amount_layers).replace(",", " "))
     write_to_f(gcode_file, '; {:20}: {:}\n'.format(f"Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y)))
     write_to_f(gcode_file, ';\n')
 
