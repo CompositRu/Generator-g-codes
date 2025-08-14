@@ -59,15 +59,15 @@ def check_dict_keys(data_dict):
 
 
 def generate_offset_list(nx, ny, cell_size_x, cell_size_y):
-    offset_x = cell_size_x / nx;
-    offset_y = cell_size_y / ny;
+    offset_x = cell_size_x / nx
+    offset_y = cell_size_y / ny
     snake_step = 1.5 * offset_y # коэффициент 1.5 взят с потолка
     offset_list = []
     for j in range(ny):
         for i in range(nx):
             x = offset_x * i
             y = offset_y * j
-            y = y + snake_step if j % 2 != 0 else y
+            y = y + snake_step if i % 2 != 0 else y
             offset_list.append([x, y])
     return offset_list
 
@@ -287,7 +287,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     
     # Пишем g-коды
     start_hit = 0
-    finsh_hit = num_pitch
+    finish_hit = num_pitch
     for layer in range(amount_layers + amount_virtual_layers):
         # Вычисляем смещение по высоте
         z_offset = layer_thickness * layer
@@ -318,7 +318,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
                 # Цикл микрошагов внутри ячейки между иглами
                 # Нанесение num_pitch ударов каждой иглой в область
                 # cell_size_x * cell_size_y (Обычно 8 на 8 мм)
-                offset_range = offset_list[start_hit:finsh_hit]
+                offset_range = offset_list[start_hit:finish_hit]
                 if is_rotation_direction and (layer + 1) % 2:
                     offset_range = reversed(offset_range)
 
@@ -336,12 +336,12 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
                     write_g_code_line(f'G1 Z{r(dist_to_material + z_offset)}')
                 
         # Смещение координат ударов на новом слое
-        if (finsh_hit < len(offset_list)):
+        if (finish_hit < len(offset_list)):
             start_hit += num_pitch
-            finsh_hit += num_pitch
+            finish_hit += num_pitch
         else:
             start_hit = 0
-            finsh_hit = num_pitch
+            finish_hit = num_pitch
 
         # Подъём головы и отъезд на стартовые координаты
         write_g_code_line(f'G1 Z{r(start_z + z_offset)}')

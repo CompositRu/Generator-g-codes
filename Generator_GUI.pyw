@@ -229,7 +229,7 @@ def click_setup():
     win.resizable(False, False)
 
 
-def is_big_size_futute_file(data_dict):
+def is_big_size_future_file(data_dict):
     ''' For warning user that future file will be big '''
     l = data_dict['Количество слоёв']
     e = data_dict['Количество пустых слоёв']
@@ -267,7 +267,7 @@ def check_all_conditions(data_dict):
         return False
 
     # Проверяем размер будущего файла   
-    if is_big_size_futute_file(data_dict):
+    if is_big_size_future_file(data_dict):
         res = messagebox.askyesno('Создаётся большой файл', 
             'Файл с g кодами содержит больше 100 000 ударов. Вы уверены, что хотите его создать?')
         return res
@@ -568,8 +568,13 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.6")
-    window.iconbitmap('symbol.ico')
+    window.title("Генератор G кодов для ИП станка v.1.61")
+
+    try:
+        #На linux системах tkinter не отображает иконку в title bar окна
+        window.iconbitmap('symbol.ico')
+    except Exception as e:
+        print(f"Ошибка: {e}")
 
     if error_message == '':
         window.columnconfigure(0, weight=1)
