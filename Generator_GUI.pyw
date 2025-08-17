@@ -285,8 +285,9 @@ def click_setup():
             for name, widget in widgets[head].items():
                 widget.destroy()
             widgets.pop(head)
-            add_button.grid(columnspan = len(widgets)*2, row=6, sticky=W+E, padx=10, pady=0)
-            save_button.grid(columnspan = len(widgets)*2, row=7, sticky=W+E, padx=10, pady=10)
+            columnspan = len(widgets) * 2 + 2
+            add_button.grid(columnspan = columnspan, row=6, sticky=W+E, padx=10, pady=0)
+            save_button.grid(columnspan = columnspan, row=7, sticky=W+E, padx=10, pady=10)
         return f
 
     i, widgets = 0, {}
