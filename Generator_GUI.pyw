@@ -112,7 +112,7 @@ def _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title = "Патт
     fig.show()
 
 
-def pluralize_word_sloy(n):
+def get_true_form_for_word_sloy(n):
     if n % 10 == 1 and n % 100 != 11:
         return f"{n} слой"
     elif 2 <= n % 10 <= 4 and (n % 100 < 10 or n % 100 >= 20):
@@ -122,27 +122,31 @@ def pluralize_word_sloy(n):
 
 
 def click_show_offsets():
-    """Считываем параметры из текущих полей и показываем точки generate_offset_list."""
+    """Визуализация паттерна пробивки"""
     try:
         cell_size_x = float(wd_left["Расстояние между иглами (мм)"]["X"].get())
         cell_size_y = float(wd_left["Расстояние между иглами (мм)"]["Y"].get())
         num_pitch = int(wd_left["Параметры паттерна"]["Кол-во ударов"].get())
-    except Exception:
-        messagebox.showerror("Смотри, что пишешь!", "Не удалось прочитать числовые параметры.")
+        is_random_offsets = bool(wd_left['Случайные смещения'].get())
+        coefficient_random_offsets = float(wd_left['Коэффициент случайных смещений'].get())
+        is_random_order = bool(wd_left['Случайный порядок ударов'].get())
+    except Exception as e:
+        messagebox.showerror("Не удалось прочитать числовые параметры.", str(e))
         return
 
     nx, ny = get_nx_ny(num_pitch)
 
-    try:
-        # функция берётся из generator_G_codes (уже импортирован)
-        points = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
-    except Exception as e:
-        messagebox.showerror("Ошибка generate_offset_list", str(e))
-        return
+    # функция берётся из generator_G_codes (уже импортирован)
+    points = get_result_offset_list(nx, ny, cell_size_x, cell_size_y, is_random_offsets, coefficient_random_offsets, is_random_order)
 
-    # title = f"Паттерн {nx} / {ny} / {num_pitch}. Ячейка между иглами полностью забивается за {nx} * {ny} / {num_pitch} = {nx * ny // num_pitch} слоёв"
     layers = nx * ny // num_pitch
-    title = f"Паттерн {nx} / {ny} / {num_pitch}. Ячейка между иглами полностью забивается за {pluralize_word_sloy(layers)}"
+    title = f"<b>Паттерн {nx}/{ny}/{num_pitch}</b>"
+    title += f"<br>- Ячейка между иглами полностью забивается за {get_true_form_for_word_sloy(layers)}"
+    if is_random_order:
+        title += "<br>- Случайный порядок ударов формируется один раз и повторяется при создании всего каркаса"
+    if is_random_offsets:
+        title += "<br>- Случайные смещения для каждого удара вычисляются заного и не повторяются на каждом слое"
+
     _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title)
 
 

@@ -72,6 +72,23 @@ def generate_offset_list(nx, ny, cell_size_x, cell_size_y):
     return offset_list
 
 
+def get_result_offset_list(nx, ny, cell_size_x, cell_size_y, is_random_offsets, coefficient_random_offsets, is_random_order):
+    # Формируем паттерн пробивки
+    offset_list = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
+
+    # Если выбран чекбокс "случайный порядок ударов", то перемешиваем список координат ударов
+    if is_random_order:
+        random.shuffle(offset_list)
+
+    # Добавляем случайные смещения
+    if is_random_offsets:
+        for p in offset_list:
+            p[0] += coefficient_random_offsets * (random.random() - 0.5) * 2
+            p[1] += coefficient_random_offsets * (random.random() - 0.5) * 2
+
+    return offset_list
+
+
 def r(x):
     return round(x, 1)
 
