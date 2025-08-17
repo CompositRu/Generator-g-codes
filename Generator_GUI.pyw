@@ -720,7 +720,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.7")
+    window.title("Генератор G кодов для ИП станка v.1.8")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
