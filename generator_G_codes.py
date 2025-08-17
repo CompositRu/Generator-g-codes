@@ -8,6 +8,7 @@
 import random
 from math import ceil as round_to_greater, sqrt
 import os
+from utils.crossplatform_utils import *
 
 
 def check_dict_keys(data_dict):
@@ -185,11 +186,10 @@ def get_filename(data_dict):
 def get_filename_path_and_create_directory_if_need(data_dict):
     on_the_desktop = data_dict["Создание файла на рабочем столе"]
     head_name = data_dict['Выбранная игольница (ИП игольница)']
-    path_desktop = os.path.join(r'C:\Users', os.getlogin(), 'Desktop') if on_the_desktop else ''
+    path_desktop = get_desktop_path() if on_the_desktop else ''
     path_head = os.path.join(path_desktop, head_name)
     filename = get_filename(data_dict)
     if not os.path.exists(path_head):
-        print('mkdir', path_head)
         os.mkdir(path_head)
     path = os.path.join(path_desktop, head_name, filename)
     print(path)
