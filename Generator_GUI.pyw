@@ -14,6 +14,137 @@ from os import rename as rename_file
 from os.path import exists as is_existed
 import threading
 
+try:
+    import plotly.express as px
+except Exception:
+    px = None  # покажем понятную ошибку при попытке построения
+
+
+def expand_with_neighbors(points, cell_size_x, cell_size_y):
+    """Для каждой точки добавляет 8 соседей (3×3 без центра). Возвращает список новых точек."""
+    if not points:
+        return []
+    dxs = (-cell_size_x, 0.0, cell_size_x)
+    dys = (-cell_size_y, 0.0, cell_size_y)
+    others = []
+    for x, y in points:
+        for dx in dxs:
+            for dy in dys:
+                if dx == 0.0 and dy == 0.0:
+                    continue  # пропускаем исходную точку
+                others.append([x + dx, y + dy])
+    return others
+
+
+def _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title = "Паттерн"):
+    """Рисует точки, окрашивая точки пробитые на одном слое (каждые num_pitch последовательных точек) в один цвет."""
+
+    if px is None:
+        messagebox.showerror(
+            "Plotly не установлен",
+            "Для визуализации необходимо установить пакет plotly (и, возможно, pandas):\n\npip install plotly\npip install pandas",
+        )
+        return
+    if not points:
+        messagebox.showerror("Пусто", "Список точек пуст.")
+        return
+
+    # Для каждой точки определим номер группы, таким образом чтобы в группах было по num_pitch точек.
+    group_idx = [i // num_pitch for i in range(len(points))]
+    # Подпишем группы диапазонами индексов
+    labels = []
+    for gi in group_idx:
+        start = gi * num_pitch + 1
+        end = min((gi + 1) * num_pitch, len(points))
+        labels.append(f"{gi} ({start}–{end} удары)")
+
+    # Список групп в порядке первого появления (важно для «строгого» соответствия палитре)
+    groups_in_order = []
+    for lab in labels:
+        if lab not in groups_in_order:
+            groups_in_order.append(lab)
+
+    # Формируем список из имён групп без повторений. Т.к. set теряет порядок элементов, то используем его как вспомогательный контейнер
+    seen = set() # вспомогательно множество для
+    groups = [x for x in labels if not (x in seen or seen.add(x))]
+
+    palette = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+        "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
+    ]
+    color_map = {g: palette[i % len(palette)] for i, g in enumerate(groups)}
+
+    # --- соседи (8 на каждую исходную точку) ---
+    others = expand_with_neighbors(points, cell_size_x, cell_size_y)
+    xs_others = [p[0] for p in others]
+    ys_others = [p[1] for p in others]
+    labels_others = ["Соседние"] * len(others)
+
+    # --- исходные точки и их групповые ярлыки ---
+    xs_base = [p[0] for p in points]
+    ys_base = [p[1] for p in points]
+
+    # --- общий набор данных ---
+    xs_all = xs_base + xs_others
+    ys_all = ys_base + ys_others
+    labels_all = labels + labels_others
+
+    # --- цвета: 
+    # Для точек на каждом пробитом слое выбираем один цвет из палитры,
+    # Все соседние точки (пробитые сеседними иглами) окрашиваем в светло-серый
+    color_map = {g: palette[i % len(palette)] for i, g in enumerate(groups_in_order)}
+    color_map["Соседние"] = "#d3d3d3"  # lightgray
+
+    # хотим порядок легенды: все группы по порядку, затем "Соседние"
+    groups_in_order = groups_in_order + ["Соседние"]
+
+    fig = px.scatter(
+        x=xs_all, y=ys_all, color=labels_all,
+        color_discrete_map=color_map,
+        category_orders={"color": groups_in_order},
+        labels={"x": "X", "y": "Y", "color": f"Слои (по {num_pitch} ударов)"},
+        title=title,
+    )
+
+    fig.update_traces(mode="markers", marker=dict(size=12))
+    fig.update_yaxes(scaleanchor="x", scaleratio=1) # одинаковый масштаб по X и Y
+    fig.show()
+
+
+def pluralize_word_sloy(n):
+    if n % 10 == 1 and n % 100 != 11:
+        return f"{n} слой"
+    elif 2 <= n % 10 <= 4 and (n % 100 < 10 or n % 100 >= 20):
+        return f"{n} слоя"
+    else:
+        return f"{n} слоёв"
+
+
+def click_show_offsets():
+    """Считываем параметры из текущих полей и показываем точки generate_offset_list."""
+    try:
+        cell_size_x = float(wd_left["Расстояние между иглами (мм)"]["X"].get())
+        cell_size_y = float(wd_left["Расстояние между иглами (мм)"]["Y"].get())
+        num_pitch = int(wd_left["Параметры паттерна"]["Кол-во ударов"].get())
+    except Exception:
+        messagebox.showerror("Смотри, что пишешь!", "Не удалось прочитать числовые параметры.")
+        return
+
+    nx, ny = get_nx_ny(num_pitch)
+
+    try:
+        # функция берётся из generator_G_codes (уже импортирован)
+        points = generate_offset_list(nx, ny, cell_size_x, cell_size_y)
+    except Exception as e:
+        messagebox.showerror("Ошибка generate_offset_list", str(e))
+        return
+
+    # title = f"Паттерн {nx} / {ny} / {num_pitch}. Ячейка между иглами полностью забивается за {nx} * {ny} / {num_pitch} = {nx * ny // num_pitch} слоёв"
+    layers = nx * ny // num_pitch
+    title = f"Паттерн {nx} / {ny} / {num_pitch}. Ячейка между иглами полностью забивается за {pluralize_word_sloy(layers)}"
+    _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title)
+
 
 def is_opened_file(filename):
     if is_existed(filename):
@@ -83,7 +214,7 @@ def click_save():
 
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
-    heads['Выбранная голова'] = head_name
+    heads['Выбранная игольница (ИП игольница)'] = head_name
 
     write_to_json_file('heads.json', heads)
 
@@ -119,33 +250,38 @@ def create_widgets_for_setup_win(win, section, item, i, delete_head_func):
     delete_button = Button(win, text = 'Удалить', command = delete_head_func(section))
     delete_button.grid(columnspan = 2, column=i, row=5, sticky=W+E, padx=10, pady=10)
 
-    head_widgets = {}
-    head_widgets['head_name'] = textfield_head_name 
-    head_widgets['canvas'] = c
-    head_widgets['label_x'] = label_x
-    head_widgets['label_y'] = label_y
-    head_widgets['label_path'] = label_path
-    head_widgets['delete_button'] = delete_button
-    head_widgets['X'] = textfield_x
-    head_widgets['Y'] = textfield_y
-    head_widgets['path'] = path
+    head_widgets = {
+        "head_name": textfield_head_name,
+        "canvas": c,
+        "label_x": label_x,
+        "label_y": label_y,
+        "label_path": label_path,
+        "delete_button": delete_button,
+        "X": textfield_x,
+        "Y": textfield_y,
+        "path": path,
+    }
 
     return head_widgets
 
 
 def click_setup():
     win = Toplevel(window)
-    win.title("Количество рядов игл на голове")
-    win.iconbitmap('symbol.ico')
-    win.grab_set()
-    
-    i, widgets = 0, {}
+    win.title("Игольницы (ИП головы)")
+    try:
+        #На linux системах tkinter не отображает иконку в title bar окна
+        win.iconbitmap('symbol.ico')
+    except Exception:
+        pass
+
+    win.grab_set() # Блокирует другие окна Tkinter
+    win.attributes('-topmost', 1) # Окно поверх других
 
     ''' Function for buttons "delete nead" '''
     def delete_head_func(head):
         def f():
             # удаляем из словаря виджетов, а из хедс удаляем по факту при сохранении
-            # heads['Количество рядов игл на голове'].pop(head)
+            # heads['Игольницы (ИП головы)'].pop(head)
             for name, widget in widgets[head].items():
                 widget.destroy()
             widgets.pop(head)
@@ -153,25 +289,24 @@ def click_setup():
             save_button.grid(columnspan = len(widgets)*2, row=7, sticky=W+E, padx=10, pady=10)
         return f
 
-    for section, item in heads["Количество рядов игл на голове"].items():
+    i, widgets = 0, {}
+    for section, item in heads["Игольницы (ИП головы)"].items():
         widgets[section] = create_widgets_for_setup_win(win, section, item, i, delete_head_func)
         i += 2
 
     def add_widget():
-        i = len(widgets) * 2
-        name = "Г" + str(len(widgets) + 1)
-        parameters = {}
-        parameters['X'] = len(widgets) + 1
-        parameters['Y'] = len(widgets) + 1
-        parameters['path'] = 'введите имя'
-        widgets[name] = create_widgets_for_setup_win(win, name, parameters, i, delete_head_func)
-        add_button.grid(columnspan = len(widgets)*2, row=6, sticky=W+E, padx=10, pady=0)
-        save_button.grid(columnspan = len(widgets)*2, row=7, sticky=W+E, padx=10, pady=10)
+        idx = len(widgets) + 1
+        i2 = len(widgets) * 2
+        name = f"Г{idx}"
+        parameters = {"X": idx, "Y": idx, "path": "введите имя"}
+        widgets[name] = create_widgets_for_setup_win(win, name, parameters, i2, delete_head_func)
+        add_button.grid(columnspan = i2 + 2, row=6, sticky=W+E, padx=10, pady=0)
+        save_button.grid(columnspan = i2 + 2, row=7, sticky=W+E, padx=10, pady=10)
 
     add_button = Button(win, 
                         text = 'Добавить голову', 
                         command = add_widget)
-    add_button.grid(columnspan = len(heads['Количество рядов игл на голове'])*2,
+    add_button.grid(columnspan = len(heads['Игольницы (ИП головы)'])*2 + 20,
                     row=6, 
                     sticky=W+E, 
                     padx=10, 
@@ -180,10 +315,10 @@ def click_setup():
     def save_data_heads():
         combo = wd_right["Комбобокс выбор головы"]
         head_name = combo.get()
-        heads['Выбранная голова'] = head_name
+        heads['Выбранная игольница (ИП игольница)'] = head_name
 
         # Проверка данных
-        for head, widget in widgets.items():
+        for _, widget in widgets.items():
             try:
                 x = int(widget['X'].get())
                 y = int(widget['Y'].get())
@@ -191,8 +326,8 @@ def click_setup():
                 messagebox.showerror('Смотри, что пишешь!', 'Количеством игл может быть только целое число')
                 return
 
-        heads["Количество рядов игл на голове"].clear()
-        head_needles = heads["Количество рядов игл на голове"]
+        heads["Игольницы (ИП головы)"].clear()
+        head_needles = heads["Игольницы (ИП головы)"]
  
         # Сохранение данных
         for head, widget in widgets.items():
@@ -208,19 +343,19 @@ def click_setup():
         combo = wd_right["Комбобокс выбор головы"]
         idx = combo['values'].index(combo.get())
 
-        combo['values'] = [section for section, item in heads["Количество рядов игл на голове"].items()]
+        combo['values'] = [section for section, item in heads["Игольницы (ИП головы)"].items()]
 
         combo.current(idx if idx < len(combo['values']) else 0)
-        heads['Выбранная голова'] = combo.get()
+        heads['Выбранная игольница (ИП игольница)'] = combo.get()
 
-        # Обновляем главное окно. В качестве аргумента event используем что угодно
-        change_pic(1);
+        # Обновляем главное окно. Событие не используется.
+        change_pic(None);
 
     save_button = Button(win, 
                         text = 'Сохранить', 
                         bg='ivory4', 
                         command = save_data_heads)
-    save_button.grid(columnspan = len(heads['Количество рядов игл на голове']) * 2, 
+    save_button.grid(columnspan = len(heads['Игольницы (ИП головы)']) * 2, 
                     row = 7, 
                     sticky = W + E, 
                     padx = 10, 
@@ -237,7 +372,7 @@ def is_big_size_future_file(data_dict):
     y = data_dict['Количество шагов головы']['Y']
     n = data_dict['Параметры паттерна']['Кол-во ударов']
     hits = (l + e) * x * y * n
-    if hits > 100000:
+    if hits > 100_000:
         return True
     return False
 
@@ -250,7 +385,7 @@ def get_data_for_generating():
     data["Задание размеров каркаса"] = type_frame_size_list[data.pop("Номер радиокнопки типа задания размера каркаса")]
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
-    heads['Выбранная голова'] = head_name
+    heads['Выбранная игольница (ИП игольница)'] = head_name
     return {**data, **heads}
 
 
@@ -263,7 +398,7 @@ def check_all_conditions(data_dict):
 
     #Проверяем файл
     if is_opened_file(data_dict["Имя файла"]):
-        messagebox.showerror('Файл открыт в другой программе', f'Закрой файл {data_dict["Имя файла"]}.')  
+        messagebox.showerror('Файл открыт в другой программе', f'Закройте файл {data_dict["Имя файла"]}.')  
         return False
 
     # Проверяем размер будущего файла   
@@ -288,9 +423,16 @@ def click_generate():
 
     # Окно с progress bar
     win = Toplevel(window)
-    win.iconbitmap('symbol.ico')
-    def window_deleted():
+    try:
+        #На linux системах tkinter не отображает иконку в title bar окна
+        win.iconbitmap('symbol.ico')
+    except Exception:
         pass
+
+    def window_deleted():
+        # Блокируем закрытие, пока идёт генерация
+        pass
+
     win.protocol('WM_DELETE_WINDOW', window_deleted)
     bar = Progressbar(win, length=300)
     bar.pack()
@@ -368,6 +510,7 @@ def change_visible():
         group_grid_remove(group_2)
         group_grid(group_1)
 
+
 def display_parameters(frame, data_dict, i_row):
     part_data_dict = {}
     part_data_dict['Количество шагов головы'] = data_dict.pop('Количество шагов головы')
@@ -375,7 +518,7 @@ def display_parameters(frame, data_dict, i_row):
 
     widget_dict, labels_dict, i = display_parameters_recursion(frame, data_dict, i_row)
 
-    label_empty = Label(right_desk)
+    label_empty = Label(frame)
     label_empty.grid(columnspan=2, row=i, sticky=N+S)
     frame.rowconfigure(i, weight=1) # Эта строка нужна, чтобы виджет мог растягиваться
     i += 1
@@ -405,10 +548,11 @@ def show_image(canvas, filename):
         try:
             img = PhotoImage(file='undefined.png')
         except:
-            title = 'Опять что-то менял в файлах? Зовите'
-            message = 'Отсутствует файл изображения головы (формат - 200х200, \
-расширение - .png) и файл undefined.png для отображения иглопробивных голов, \
-для которых ещё не указали файл с их фотографией'
+            title = "Отсутствует изображение головы"
+            message = (
+                "Нет файла изображения головы (200×200, .png) и файла undefined.png "
+                "для голов без указанной фотографии."
+            )
             messagebox.showerror(title, message)
             canvas.create_rectangle(0, 0, 200, 200, fill='white')
     if img is not None:
@@ -424,12 +568,12 @@ def change_pic(event):
 
     canvas.delete("all")
     head_name = combo.get()
-    heads['Выбранная голова'] = head_name
-    new_x_needle = heads['Количество рядов игл на голове'][head_name]['X']
-    new_y_needle = heads['Количество рядов игл на голове'][head_name]['Y']
+    heads['Выбранная игольница (ИП игольница)'] = head_name
+    new_x_needle = heads['Игольницы (ИП головы)'][head_name]['X']
+    new_y_needle = heads['Игольницы (ИП головы)'][head_name]['Y']
     label_x_needle.config(text = 'Х      ' + str(new_x_needle))
     label_y_needle.config(text = 'Y      ' + str(new_y_needle))
-    filename = heads['Количество рядов игл на голове'][head_name]['path']
+    filename = heads['Игольницы (ИП головы)'][head_name]['path']
     show_image(canvas, filename)
 
 
@@ -441,26 +585,26 @@ def display_right_side_top(frame):
     lab.grid(column=0, row=1)
 
     val = []
-    for section, item in heads["Количество рядов игл на голове"].items():
+    for section, item in heads["Игольницы (ИП головы)"].items():
         val.append(section)
     combo = Combobox(frame, width = 10, values=val, state='readonly')
-    combo.current(val.index(heads["Выбранная голова"]))  
+    combo.current(val.index(heads["Выбранная игольница (ИП игольница)"]))  
     combo.grid(column=1, row=1)
 
     head_name = combo.get()
-    filename = heads['Количество рядов игл на голове'][head_name]['path']
+    filename = heads['Игольницы (ИП головы)'][head_name]['path']
     show_image(canvas, filename) 
 
     combo.bind('<<ComboboxSelected>>', change_pic)
 
-    lab = Label(frame, text = 'Количество рядов игл на голове:', font=("Arial Bold", 10, 'bold'))
+    lab = Label(frame, text = 'Игольницы (ИП головы):', font=("Arial Bold", 10, 'bold'))
     lab.grid(columnspan=2, row=2)
 
-    X_needles = heads['Количество рядов игл на голове'][head_name]['X']
+    X_needles = heads['Игольницы (ИП головы)'][head_name]['X']
     lab_x = Label(frame, text = 'Х      ' + str(X_needles))
     lab_x.grid(columnspan=2, row=3)
 
-    Y_needles = heads['Количество рядов игл на голове'][head_name]['Y']
+    Y_needles = heads['Игольницы (ИП головы)'][head_name]['Y']
     lab_y = Label(frame, text = 'Y      ' + str(Y_needles))
     lab_y.grid(columnspan=2, row=4)
 
@@ -495,18 +639,19 @@ def display_right_side_bottom(frame):
         v = BooleanVar()
         v.set(second_dict[section])
         widget_dict[section] = v
-        checkbox = Checkbutton(right_desk, text=section, variable=v, font=("Arial Bold", 10, 'bold'), command=func)
+        checkbox = Checkbutton(frame, text=section, variable=v, font=("Arial Bold", 10, 'bold'), command=func)
         checkbox.grid(columnspan=2, row=row, sticky=W)
 
     create_check_box("Случайный порядок ударов", 11)
     create_check_box("Случайные смещения", 12)
 
-    lab = Label(right_desk, text = "Коэффициент")
+    lab = Label(frame, text = "Коэффициент")
     lab.grid(column=0, row=13)
 
-    text_field1 = Entry(right_desk, width = 8, justify='center')
+    text_field1 = Entry(frame, width = 8, justify='center')
     text_field1.grid(column=1, row=13)
     set_text(text_field1, second_dict["Коэффициент случайных смещений"])
+    widget_dict["Коэффициент случайных смещений"] = text_field1
 
     create_check_box("Чередование направлений прохода слоя", 14)
 
@@ -517,26 +662,28 @@ def display_right_side_bottom(frame):
     create_check_box("Создание файла на рабочем столе", 15)
     create_check_box("Автоматическая генерация имени файла", 16, change_visible_filename)
 
-    bt_save = Button(right_desk, text='Сохранить', width = 15, bg='ivory4', command=click_save)
+    bt_save = Button(frame, text='Сохранить', width = 15, bg='ivory4', command=click_save)
     bt_save.grid(column=0, row=17, padx=3, pady=3, sticky=W+E)
 
-    bt_setup = Button(right_desk, text='Настроить', width = 15, bg='ivory4', command=click_setup)
+    bt_setup = Button(frame, text='Настроить', width = 15, bg='ivory4', command=click_setup)
     bt_setup.grid(column=1, row=17, padx=3, pady=3, sticky=W+E)
 
-    lab = Label(right_desk, text = "Имя файла")
+    lab = Label(frame, text = "Имя файла")
     lab.grid(column=0, row=18)
 
-    text_field2 = Entry(right_desk, width = 8, justify='center')
+    text_field2 = Entry(frame, width = 8, justify='center')
     text_field2.grid(column=1, row=18, sticky=W+E)
     set_text(text_field2, filename)
-
-    bt_generate = Button(right_desk, text='Генерировать g-code файл', bg='lime green', command=click_generate)
-    bt_generate.grid(columnspan=2, row=22, padx=3, pady=3, sticky=W+E)
-
-    widget_dict["Коэффициент случайных смещений"] = text_field1
     widget_dict["Имя файла"] = text_field2
 
+    bt_generate = Button(frame, text='Генерировать g-code файл', bg='lime green', command=click_generate)
+    bt_generate.grid(columnspan=2, row=22, padx=3, pady=3, sticky=W+E)
+
+    bt_show = Button(frame, text="Показать точки", bg="deep sky blue", command=click_show_offsets)
+    bt_show.grid(columnspan=2, row=21, padx=3, pady=3, sticky=W + E)
+
     return widget_dict
+
 
 if __name__ == "__main__":
     #Открываем файл с конфигами
@@ -568,7 +715,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.61")
+    window.title("Генератор G кодов для ИП станка v.1.7")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна

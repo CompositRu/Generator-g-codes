@@ -28,7 +28,7 @@ def check_dict_keys(data_dict):
                 "Коэффициент случайных смещений",
                 "Чередование направлений прохода слоя",
                 "Автоматическая генерация имени файла"]
-    heads_list = ["Количество рядов игл на голове", "Выбранная голова"]
+    heads_list = ["Игольницы (ИП головы)", "Выбранная игольница (ИП игольница)"]
     pattern_list = ['Кол-во ударов']
     xy_list = ['X', 'Y']
     xyz_list = ['X', 'Y', 'Z']
@@ -53,8 +53,8 @@ def check_dict_keys(data_dict):
         if item not in data_dict:
             return item
     for item in head_parameters_list:
-        if item not in data_dict["Количество рядов игл на голове"][data_dict["Выбранная голова"]]:
-            return item + ' в ' + "Количество рядов игл на голове"
+        if item not in data_dict["Игольницы (ИП головы)"][data_dict["Выбранная игольница (ИП игольница)"]]:
+            return item + ' в ' + "Игольницы (ИП головы)"
     return ''
 
 
@@ -107,9 +107,9 @@ def get_nx_ny(num_pitch):
 def get_message(data_dict):
     cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
-    head_name = data_dict['Выбранная голова']
-    needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
-    needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']
+    head_name = data_dict['Выбранная игольница (ИП игольница)']
+    needles_x = data_dict['Игольницы (ИП головы)'][head_name]['X']
+    needles_y = data_dict['Игольницы (ИП головы)'][head_name]['Y']
     frame_length_x = data_dict['Габариты каркаса']['X']
     frame_length_y = data_dict['Габариты каркаса']['Y']
     selected_type_frame_size = data_dict['Задание размеров каркаса']
@@ -140,7 +140,7 @@ def get_filename(data_dict):
     if is_automatic_name == False:
         return data_dict["Имя файла"]
     else:        
-        head_name = data_dict['Выбранная голова']
+        head_name = data_dict['Выбранная игольница (ИП игольница)']
         frame_length_x = data_dict['Габариты каркаса']['X']
         frame_length_y = data_dict['Габариты каркаса']['Y']
         selected_type_frame_size = data_dict['Задание размеров каркаса']
@@ -153,8 +153,8 @@ def get_filename(data_dict):
         if selected_type_frame_size == 'По шагам головы':
             cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
             cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
-            needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
-            needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']
+            needles_x = data_dict['Игольницы (ИП головы)'][head_name]['X']
+            needles_y = data_dict['Игольницы (ИП головы)'][head_name]['Y']
             num_step_x = data_dict['Количество шагов головы']['X']
             num_row_y = data_dict['Количество шагов головы']['Y']
 
@@ -167,13 +167,15 @@ def get_filename(data_dict):
 
 def get_filename_path_and_create_directory_if_need(data_dict):
     on_the_desktop = data_dict["Создание файла на рабочем столе"]
-    head_name = data_dict['Выбранная голова']
+    head_name = data_dict['Выбранная игольница (ИП игольница)']
     path_desktop = os.path.join(r'C:\Users', os.getlogin(), 'Desktop') if on_the_desktop else ''
     path_head = os.path.join(path_desktop, head_name)
     filename = get_filename(data_dict)
     if not os.path.exists(path_head):
+        print('mkdir', path_head)
         os.mkdir(path_head)
     path = os.path.join(path_desktop, head_name, filename)
+    print(path)
     return path
 
 
@@ -209,9 +211,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     amount_layers = data_dict['Количество слоёв']
     amount_virtual_layers = data_dict['Количество пустых слоёв']
     dist_to_material = data_dict['Расстояние от каркаса до головы перед ударом (мм)']
-    head_name = data_dict['Выбранная голова']
-    needles_x = data_dict['Количество рядов игл на голове'][head_name]['X']
-    needles_y = data_dict['Количество рядов игл на голове'][head_name]['Y']
+    head_name = data_dict['Выбранная игольница (ИП игольница)']
+    needles_x = data_dict['Игольницы (ИП головы)'][head_name]['X']
+    needles_y = data_dict['Игольницы (ИП головы)'][head_name]['Y']
     layer_thickness = data_dict['Толщина слоя (мм)']
     start_x = data_dict['Начальное положение головы']['X']
     start_y = data_dict['Начальное положение головы']['Y']
