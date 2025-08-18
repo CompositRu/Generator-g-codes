@@ -219,6 +219,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
     cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
     num_pitch = data_dict['Параметры паттерна']['Кол-во ударов']
+    generate_nx_ny = data_dict['Параметры паттерна']['Автоматическое определение формы паттерна']
+    nx = data_dict['Параметры паттерна']['nx']
+    ny = data_dict['Параметры паттерна']['ny']
     num_step_x = data_dict['Количество шагов головы']['X']
     num_row_y = data_dict['Количество шагов головы']['Y']
     frame_length_x = data_dict['Габариты каркаса']['X']
@@ -245,8 +248,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     on_the_desktop = data_dict["Создание файла на рабочем столе"]
     is_automatic_name = data_dict["Автоматическая генерация имени файла"]
 
-    # Вычисляем параметры паттерна
-    nx, ny = get_nx_ny(num_pitch)
+    # Вычисляем параметры паттерна, если необходимо
+    if generate_nx_ny:
+        nx, ny = get_nx_ny(num_pitch)
 
     # Вспомогательные параметры
     head_width_x = cell_size_x * needles_x
@@ -288,7 +292,11 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     write_info_to_prehead("Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y))
     write_empty_line()
     write_info_to_prehead("Параметры паттерна nx, ny", f'{nx}, {ny}')
-    gcode_file.write(f'; Через каждые {int(nx * ny / num_pitch)} слоёв бьём в теже точки\n') 
+    if is_random_offsets:
+        gcode_file.write(f'; Есть смещения перед каждым ударом на случайную величину от 0 до {coefficient_random_offsets} мм вдоль Х и Y в любом направлении\n') 
+    write_empty_line()
+    clarification = "c погрешностью на случайные смещения" if is_random_offsets else ""
+    gcode_file.write(f'; Через каждые {int(nx * ny / num_pitch)} слоёв бьём в теже точки {clarification}\n') 
     write_empty_line()
 
     # Установка скорости и начального положения

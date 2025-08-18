@@ -58,16 +58,16 @@ def _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title = "Патт
         end = min((gi + 1) * num_pitch, len(points))
         labels.append(f"{gi} ({start}–{end} удары)")
 
-    # Список групп в порядке первого появления (важно для «строгого» соответствия палитре)
-    groups_in_order = []
-    for lab in labels:
-        if lab not in groups_in_order:
-            groups_in_order.append(lab)
-
     # Формируем список из имён групп без повторений. Т.к. set теряет порядок элементов, то используем его как вспомогательный контейнер
+    # Строгий порядок гарантирует, что при перезапуске алгоритма цвета для слоёв будут теже самые
     seen = set() # вспомогательно множество для
     groups = [x for x in labels if not (x in seen or seen.add(x))]
-
+    # альтернативное решение
+    # groups_in_order = []
+    # for lab in labels:
+    #     if lab not in groups_in_order:
+    #         groups_in_order.append(lab)
+    
     palette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
         "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
@@ -93,16 +93,16 @@ def _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title = "Патт
     # --- цвета: 
     # Для точек на каждом пробитом слое выбираем один цвет из палитры,
     # Все соседние точки (пробитые сеседними иглами) окрашиваем в светло-серый
-    color_map = {g: palette[i % len(palette)] for i, g in enumerate(groups_in_order)}
+    color_map = {g: palette[i % len(palette)] for i, g in enumerate(groups)}
     color_map["Соседние"] = "#d3d3d3"  # lightgray
 
     # хотим порядок легенды: все группы по порядку, затем "Соседние"
-    groups_in_order = groups_in_order + ["Соседние"]
+    groups = groups + ["Соседние"]
 
     fig = px.scatter(
         x=xs_all, y=ys_all, color=labels_all,
         color_discrete_map=color_map,
-        category_orders={"color": groups_in_order},
+        category_orders={"color": groups},
         labels={"x": "X", "y": "Y", "color": f"Слои (по {num_pitch} ударов)"},
         title=title,
     )
@@ -127,6 +127,9 @@ def click_show_offsets():
         cell_size_x = float(wd_left["Расстояние между иглами (мм)"]["X"].get())
         cell_size_y = float(wd_left["Расстояние между иглами (мм)"]["Y"].get())
         num_pitch = int(wd_left["Параметры паттерна"]["Кол-во ударов"].get())
+        generate_nx_ny = bool(wd_left['Параметры паттерна']['Автоматическое определение формы паттерна'].get())
+        nx = int(wd_left['Параметры паттерна']['nx'].get())
+        ny = int(wd_left['Параметры паттерна']['ny'].get())
         is_random_offsets = bool(wd_left['Случайные смещения'].get())
         coefficient_random_offsets = float(wd_left['Коэффициент случайных смещений'].get())
         is_random_order = bool(wd_left['Случайный порядок ударов'].get())
@@ -134,7 +137,9 @@ def click_show_offsets():
         messagebox.showerror("Не удалось прочитать числовые параметры.", str(e))
         return
 
-    nx, ny = get_nx_ny(num_pitch)
+    # Вычисляем параметры паттерна, если необходимо
+    if generate_nx_ny:
+        nx, ny = get_nx_ny(num_pitch)
 
     # функция берётся из generator_G_codes (уже импортирован)
     points = get_result_offset_list(nx, ny, cell_size_x, cell_size_y, is_random_offsets, coefficient_random_offsets, is_random_order)
@@ -475,7 +480,15 @@ def display_parameters_recursion(frame, data_dict, i_row):
             l.grid(columnspan=2, row=i, sticky=N)
             i += 1
             labels_dict[section + ' label'] = l
-            widget_dict[section], labels_dict[section], i = display_parameters_recursion(frame, item, i)         
+            widget_dict[section], labels_dict[section], i = display_parameters_recursion(frame, item, i)
+        elif isinstance(item, bool):
+            var = BooleanVar(value=item)
+            cb = Checkbutton(frame, text=section, variable=var)
+            cb.grid(columnspan=2, row=i, sticky=W)
+            widget_dict[section] = var
+            # сохраним сам чекбокс в labels_dict — у него тоже есть grid()/grid_remove()
+            labels_dict[section] = cb
+            i += 1        
         else:
             lab = Label(frame, text = section)
             lab.grid(column=0, row=i, sticky=N)
@@ -486,6 +499,34 @@ def display_parameters_recursion(frame, data_dict, i_row):
             labels_dict[section] = lab
             i += 1
     return widget_dict, labels_dict, i
+
+
+def change_pattern_parameters_visibility():
+    """Если включено 'Автоматическое определение формы паттерна',
+    скрываем поля nx/ny и их лейблы; иначе показываем."""
+    try:
+        auto_var = wd_left["Параметры паттерна"]["Автоматическое определение формы паттерна"]
+        nx_entry = wd_left["Параметры паттерна"]["nx"]
+        ny_entry = wd_left["Параметры паттерна"]["ny"]
+        nx_label = wd_labels["Параметры паттерна"]["nx"]
+        ny_label = wd_labels["Параметры паттерна"]["ny"]
+    except KeyError:
+        return  # какая-то из позиций отсутствует — тихо выходим
+
+    widgets = (nx_entry, ny_entry, nx_label, ny_label)
+
+    def hide():
+        for w in widgets:
+            w.grid_remove()
+
+    def show():
+        for w in widgets:
+            w.grid()
+
+    if isinstance(auto_var, BooleanVar) and auto_var.get():
+        hide()
+    else:
+        show()
 
 
 def change_visible():
@@ -720,7 +761,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.8")
+    window.title("Генератор G кодов для ИП станка v.1.81")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
@@ -740,6 +781,18 @@ if __name__ == "__main__":
 
         wd_left, wd_labels = display_parameters(left_desk,  data, 0)
         change_visible()
+
+        # Добавляем колбэк на чекбокс на левой панеле
+        try:
+            auto_var = wd_left["Параметры паттерна"]["Автоматическое определение формы паттерна"]
+            if isinstance(auto_var, BooleanVar):
+                auto_var.trace_add("write", lambda *args: change_pattern_parameters_visibility())
+            # первичная установка видимости
+            change_pattern_parameters_visibility()
+        except KeyError:
+            pass
+
+
         wd_right = display_right_side_top(right_desk)
         wd_left["Номер радиокнопки для порядка рядов"] = display_radiobuttons(right_desk)
         wd_right_bottom = display_right_side_bottom(right_desk)
