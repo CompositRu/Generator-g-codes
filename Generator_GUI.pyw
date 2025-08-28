@@ -215,7 +215,7 @@ def write_to_json_file(file_name, data_dict):
 def click_save():
     data_to_json = recursion_saver(wd_left)
     data_to_json["Список вариантов порядка прохождения рядов"] = order_list
-    data_to_json["Порядок прохождения рядов"] = order_list[data_to_json.pop("Номер радиокнопки для порядка рядов")]
+    data_to_json["Порядок прохождения рядов"] = wd_right["Комбобокс порядок рядов"].get()
     data_to_json["Список вариантов задания размеров каркаса"] = type_frame_size_list
     data_to_json["Задание размеров каркаса"] = type_frame_size_list[data_to_json.pop("Номер радиокнопки типа задания размера каркаса")]
     
@@ -391,7 +391,7 @@ def get_data_for_generating():
     ''' Get dict with all settings '''
     data = recursion_saver(wd_left)
 
-    data["Порядок прохождения рядов"] = order_list[data.pop("Номер радиокнопки для порядка рядов")]
+    data["Порядок прохождения рядов"] = wd_right["Комбобокс порядок рядов"].get()
     data["Задание размеров каркаса"] = type_frame_size_list[data.pop("Номер радиокнопки типа задания размера каркаса")]
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
@@ -662,15 +662,19 @@ def display_right_side_top(frame):
     return widget_dict
 
 
-def display_radiobuttons(frame):
-    l = Label(frame, text = "Порядок прохождения рядов:", font=("Arial Bold", 10, 'bold'))
-    l.grid(columnspan=2, row = 5)
-    v = IntVar()
-    v.set(order_list.index(selected_order))
-    for i, order in enumerate(order_list):
-        r = Radiobutton(frame, text = order, value = i, variable = v)
-        r.grid(columnspan=2, row = 6 + i, padx = 50, sticky=W)
-    return v
+def display_order_combobox(frame):
+    """Комбобокс 'Порядок прохождения рядов' вместо радиокнопок."""
+    lbl = Label(frame, text="Порядок прохождения рядов:", font=("Arial Bold", 10, "bold"))
+    lbl.grid(columnspan=2, row=5)
+
+    combo = Combobox(frame, width=18, values=order_list, state="readonly")
+    try:
+        combo.current(order_list.index(selected_order))
+    except Exception:
+        combo.current(0)
+    combo.grid(columnspan=2, row=6, padx=50, sticky=E+W)
+
+    return combo
 
 
 def change_visible_filename():
@@ -761,7 +765,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.81")
+    window.title("Генератор G кодов для ИП станка v.1.8.2")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
@@ -794,7 +798,7 @@ if __name__ == "__main__":
 
 
         wd_right = display_right_side_top(right_desk)
-        wd_left["Номер радиокнопки для порядка рядов"] = display_radiobuttons(right_desk)
+        wd_right["Комбобокс порядок рядов"] = display_order_combobox(right_desk)
         wd_right_bottom = display_right_side_bottom(right_desk)
         wd_left = {**wd_left, **wd_right_bottom}
         change_visible_filename()
