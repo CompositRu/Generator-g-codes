@@ -219,13 +219,13 @@ def click_save():
     data_to_json["Список вариантов задания размеров каркаса"] = type_frame_size_list
     data_to_json["Задание размеров каркаса"] = type_frame_size_list[data_to_json.pop("Номер радиокнопки типа задания размера каркаса")]
     
-    write_to_json_file('data.json', data_to_json)
+    write_to_json_file('data/data.json', data_to_json)
 
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
     heads['Выбранная игольница (ИП игольница)'] = head_name
 
-    write_to_json_file('heads.json', heads)
+    write_to_json_file('data/heads.json', heads)
 
 
 def create_widgets_for_setup_win(win, section, item, i, delete_head_func):
@@ -348,7 +348,7 @@ def click_setup():
             head_data['Y'] = int(widget['Y'].get())
             head_data['path'] = widget['path'].get()
 
-        write_to_json_file('heads.json', heads)
+        write_to_json_file('data/heads.json', heads)
 
         combo = wd_right["Комбобокс выбор головы"]
         idx = combo['values'].index(combo.get())
@@ -589,10 +589,10 @@ def display_parameters(frame, data_dict, i_row):
 def show_image(canvas, filename):
     img = None
     try:
-        img = PhotoImage(file=filename)
+        img = PhotoImage(file='data/' + filename)
     except:
         try:
-            img = PhotoImage(file='undefined.png')
+            img = PhotoImage(file='data/undefined.png')
         except:
             title = "Отсутствует изображение головы"
             message = (
@@ -737,7 +737,7 @@ def display_right_side_bottom(frame):
 
 if __name__ == "__main__":
     #Открываем файл с конфигами
-    with open('data.json', 'r', encoding='utf-8-sig') as f:
+    with open('data/data.json', 'r', encoding='utf-8-sig') as f:
         data = json.load(f)
 
     filename = data.pop("Имя файла")
@@ -761,7 +761,7 @@ if __name__ == "__main__":
         error_message = f'В data.json файле не хватает параметра {ke}'
 
     #Открываем файл с конфигами голов
-    with open('heads.json', 'r', encoding='utf-8-sig') as f:
+    with open('data/heads.json', 'r', encoding='utf-8-sig') as f:
         heads = json.load(f)
 
     window = Tk()  
