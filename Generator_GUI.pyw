@@ -13,6 +13,7 @@ from generator_G_codes import *
 from os import rename as rename_file
 from os.path import exists as is_existed
 import threading
+from utils.crossplatform_utils import get_resource_path
 
 try:
     import plotly.express as px
@@ -219,13 +220,13 @@ def click_save():
     data_to_json["Список вариантов задания размеров каркаса"] = type_frame_size_list
     data_to_json["Задание размеров каркаса"] = type_frame_size_list[data_to_json.pop("Номер радиокнопки типа задания размера каркаса")]
     
-    write_to_json_file('data/data.json', data_to_json)
+    write_to_json_file(get_resource_path('data/data.json'), data_to_json)
 
     combo = wd_right["Комбобокс выбор головы"]
     head_name = combo.get()
     heads['Выбранная игольница (ИП игольница)'] = head_name
 
-    write_to_json_file('data/heads.json', heads)
+    write_to_json_file(get_resource_path('data/heads.json'), heads)
 
 
 def create_widgets_for_setup_win(win, section, item, i, delete_head_func):
@@ -279,7 +280,7 @@ def click_setup():
     win.title("Игольницы (ИП головы)")
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
-        win.iconbitmap('symbol.ico')
+        win.iconbitmap(get_resource_path('symbol.ico'))
     except Exception:
         pass
 
@@ -348,7 +349,7 @@ def click_setup():
             head_data['Y'] = int(widget['Y'].get())
             head_data['path'] = widget['path'].get()
 
-        write_to_json_file('data/heads.json', heads)
+        write_to_json_file(get_resource_path('data/heads.json'), heads)
 
         combo = wd_right["Комбобокс выбор головы"]
         idx = combo['values'].index(combo.get())
@@ -435,7 +436,7 @@ def click_generate():
     win = Toplevel(window)
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
-        win.iconbitmap('symbol.ico')
+        win.iconbitmap(get_resource_path('symbol.ico'))
     except Exception:
         pass
 
@@ -609,10 +610,10 @@ def display_parameters(frame, data_dict, i_row):
 def show_image(canvas, filename):
     img = None
     try:
-        img = PhotoImage(file='data/' + filename)
+        img = PhotoImage(file=get_resource_path('data/' + filename))
     except:
         try:
-            img = PhotoImage(file='data/undefined.png')
+            img = PhotoImage(file=get_resource_path('data/undefined.png'))
         except:
             title = "Отсутствует изображение головы"
             message = (
@@ -757,7 +758,7 @@ def display_right_side_bottom(frame):
 
 if __name__ == "__main__":
     #Открываем файл с конфигами
-    with open('data/data.json', 'r', encoding='utf-8-sig') as f:
+    with open(get_resource_path('data/data.json'), 'r', encoding='utf-8-sig') as f:
         data = json.load(f)
 
     filename = data.pop("Имя файла")
@@ -781,7 +782,7 @@ if __name__ == "__main__":
         error_message = f'В data.json файле не хватает параметра {ke}'
 
     #Открываем файл с конфигами голов
-    with open('data/heads.json', 'r', encoding='utf-8-sig') as f:
+    with open(get_resource_path('data/heads.json'), 'r', encoding='utf-8-sig') as f:
         heads = json.load(f)
 
     window = Tk()  
@@ -789,7 +790,7 @@ if __name__ == "__main__":
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
-        window.iconbitmap('symbol.ico')
+        window.iconbitmap(get_resource_path('symbol.ico'))
     except Exception as e:
         print(f"Ошибка: {e}")
 

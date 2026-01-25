@@ -1,6 +1,22 @@
 from pathlib import Path
 import sys, os, re
 
+
+def get_resource_path(relative_path: str) -> str:
+    """
+    Возвращает абсолютный путь к ресурсу.
+    Работает и при запуске из исходников, и при запуске из PyInstaller exe.
+    Для exe ищет файлы рядом с exe (не внутри _MEIPASS), чтобы data/ была редактируемой.
+    """
+    if getattr(sys, 'frozen', False):
+        # Запуск из PyInstaller exe - ищем рядом с exe файлом
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Запуск из исходников - берём директорию главного скрипта
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+
 def get_desktop_path() -> Path:
     """
     Возвращает путь к рабочему столу текущего пользователя.
