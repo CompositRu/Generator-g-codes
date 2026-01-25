@@ -16,14 +16,14 @@ def check_dict_keys(data_dict):
                 "Количество слоёв",
                 "Количество пустых слоёв",
                 "Толщина слоя (мм)",
-                "Глубина удара (мм)",
+                "Пробивка",
                 "Расстояние от каркаса до головы перед ударом (мм)",
                 "Пауза в конце слоя (сек)",
                 "Скорость движения осей станка",
                 "Параметры паттерна",
-                "Количество шагов головы", 
-                "Начальное положение головы", 
-                "Расстояние между иглами (мм)", 
+                "Количество шагов головы",
+                "Начальное положение головы",
+                "Расстояние между иглами (мм)",
                 "Случайный порядок ударов",
                 "Случайные смещения",
                 "Коэффициент случайных смещений",
@@ -31,6 +31,7 @@ def check_dict_keys(data_dict):
                 "Автоматическая генерация имени файла"]
     heads_list = ["Игольницы (ИП головы)", "Выбранная игольница (ИП игольница)"]
     pattern_list = ['Кол-во ударов']
+    probivka_list = ['Пробивка с нарастанием глубины', 'Начальная глубина удара (мм)', 'Глубина удара (мм)']
     xy_list = ['X', 'Y']
     xyz_list = ['X', 'Y', 'Z']
     head_parameters_list = ['X', 'Y', 'path']
@@ -41,6 +42,9 @@ def check_dict_keys(data_dict):
     for item in pattern_list:
         if item not in data_dict["Параметры паттерна"]:
             return item + ' в ' + "Параметры паттерна"
+    for item in probivka_list:
+        if item not in data_dict["Пробивка"]:
+            return item + ' в ' + "Пробивка"
     for item in xy_list:
         if item not in data_dict["Количество шагов головы"]:
             return item + ' в ' + "Количество шагов головы"
@@ -227,7 +231,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     frame_length_x = data_dict['Габариты каркаса']['X']
     frame_length_y = data_dict['Габариты каркаса']['Y']
     selected_type_frame_size = data_dict['Задание размеров каркаса']
-    needle_depth = data_dict['Глубина удара (мм)']
+    is_progressive_depth = data_dict['Пробивка']['Пробивка с нарастанием глубины']
+    initial_depth = data_dict['Пробивка']['Начальная глубина удара (мм)']
+    max_depth = data_dict['Пробивка']['Глубина удара (мм)']
     amount_layers = data_dict['Количество слоёв']
     amount_virtual_layers = data_dict['Количество пустых слоёв']
     dist_to_material = data_dict['Расстояние от каркаса до головы перед ударом (мм)']
@@ -318,7 +324,14 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     for layer in range(amount_layers + amount_virtual_layers):
         # Вычисляем смещение по высоте
         z_offset = layer_thickness * layer
-        
+
+        # Вычисляем глубину удара
+        if is_progressive_depth:
+            growing_depth = initial_depth + layer_thickness * layer
+            needle_depth = min(growing_depth, max_depth)
+        else:
+            needle_depth = max_depth
+
         # Комментарий с номером слоя
         layer_type = 'layer' if layer < amount_layers else 'layer (holostoy)'
         gcode_file.write(f";\n; {'<' * 10} [{layer + 1}] {layer_type} {'>' * 10}\n;\n")

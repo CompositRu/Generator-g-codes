@@ -529,6 +529,26 @@ def change_pattern_parameters_visibility():
         show()
 
 
+def change_probivka_visibility():
+    """Если включено 'Пробивка с нарастанием глубины',
+    показываем поле 'Начальная глубина удара'; иначе скрываем."""
+    try:
+        probivka_var = wd_left["Пробивка"]["Пробивка с нарастанием глубины"]
+        depth_entry = wd_left["Пробивка"]["Начальная глубина удара (мм)"]
+        depth_label = wd_labels["Пробивка"]["Начальная глубина удара (мм)"]
+    except KeyError:
+        return
+
+    widgets = (depth_entry, depth_label)
+
+    if isinstance(probivka_var, BooleanVar) and probivka_var.get():
+        for w in widgets:
+            w.grid()
+    else:
+        for w in widgets:
+            w.grid_remove()
+
+
 def change_visible():
     group_1 = [wd_left['Количество шагов головы']['X'],
                wd_left['Количество шагов головы']['Y'],
@@ -765,7 +785,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.8.2")
+    window.title("Генератор G кодов для ИП станка v.1.9.0")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
@@ -796,6 +816,14 @@ if __name__ == "__main__":
         except KeyError:
             pass
 
+        # Колбэк для чекбокса "Пробивка с нарастанием глубины"
+        try:
+            probivka_var = wd_left["Пробивка"]["Пробивка с нарастанием глубины"]
+            if isinstance(probivka_var, BooleanVar):
+                probivka_var.trace_add("write", lambda *args: change_probivka_visibility())
+            change_probivka_visibility()
+        except KeyError:
+            pass
 
         wd_right = display_right_side_top(right_desk)
         wd_right["Комбобокс порядок рядов"] = display_order_combobox(right_desk)
