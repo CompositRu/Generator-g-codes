@@ -270,7 +270,7 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         
     # Открываем файл
     path = get_filename_path_and_create_directory_if_need(data_dict)
-    gcode_file = open(path, 'w')
+    gcode_file = open(path, 'w', encoding='utf-8')
 
     # Prehead с описанием файла
     write_empty_line = lambda : gcode_file.write(';\n')
