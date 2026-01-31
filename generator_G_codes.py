@@ -18,11 +18,10 @@ def check_dict_keys(data_dict):
                 "Толщина слоя (мм)",
                 "Пробивка",
                 "Расстояние от каркаса до головы перед ударом (мм)",
-                "Пауза в конце слоя (сек)",
                 "Скорость движения осей станка",
                 "Параметры паттерна",
                 "Количество шагов головы",
-                "Начальное положение головы",
+                "Позиция при ручной укладки слоя",
                 "Расстояние между иглами (мм)",
                 "Случайный порядок ударов",
                 "Случайные смещения",
@@ -33,7 +32,7 @@ def check_dict_keys(data_dict):
     pattern_list = ['Кол-во ударов']
     probivka_list = ['Пробивка с нарастанием глубины', 'Начальная глубина удара (мм)', 'Глубина удара (мм)']
     xy_list = ['X', 'Y']
-    xyz_list = ['X', 'Y', 'Z']
+    position_list = ['X', 'Y', 'Z', 'Пауза в конце слоя (сек)', 'Рост Z с каждым слоем']
     head_parameters_list = ['X', 'Y', 'path']
 
     for item in base_list:
@@ -48,9 +47,9 @@ def check_dict_keys(data_dict):
     for item in xy_list:
         if item not in data_dict["Количество шагов головы"]:
             return item + ' в ' + "Количество шагов головы"
-    for item in xyz_list:
-        if item not in data_dict["Начальное положение головы"]:
-            return item + ' в ' + "Начальное положение головы"
+    for item in position_list:
+        if item not in data_dict["Позиция при ручной укладки слоя"]:
+            return item + ' в ' + "Позиция при ручной укладки слоя"
     for item in xy_list:
         if item not in data_dict["Расстояние между иглами (мм)"]:
             return item + ' в ' + "Расстояние между иглами (мм)"
@@ -241,18 +240,19 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     needles_x = data_dict['Игольницы (ИП головы)'][head_name]['X']
     needles_y = data_dict['Игольницы (ИП головы)'][head_name]['Y']
     layer_thickness = data_dict['Толщина слоя (мм)']
-    start_x = data_dict['Начальное положение головы']['X']
-    start_y = data_dict['Начальное положение головы']['Y']
-    start_z = data_dict['Начальное положение головы']['Z']
-    pause = data_dict['Пауза в конце слоя (сек)']
+    layer_laying_position_x = data_dict['Позиция при ручной укладки слоя']['X']
+    layer_laying_position_y = data_dict['Позиция при ручной укладки слоя']['Y']
+    layer_laying_position_z = data_dict['Позиция при ручной укладки слоя']['Z']
+    pause = data_dict['Позиция при ручной укладки слоя']['Пауза в конце слоя (сек)']
+    is_growing_z = data_dict['Позиция при ручной укладки слоя']['Рост Z с каждым слоем']
     is_random_order = data_dict['Случайный порядок ударов']
     is_random_offsets = data_dict['Случайные смещения']
     is_rotation_direction = data_dict['Чередование направлений прохода слоя']
     coefficient_random_offsets = data_dict['Коэффициент случайных смещений']
     speed = data_dict['Скорость движения осей станка']
     order = data_dict["Порядок прохождения рядов"]
-    on_the_desktop = data_dict["Создание файла на рабочем столе"]
-    is_automatic_name = data_dict["Автоматическая генерация имени файла"]
+    # on_the_desktop = data_dict["Создание файла на рабочем столе"]
+    # is_automatic_name = data_dict["Автоматическая генерация имени файла"]
 
     # Вычисляем параметры паттерна, если необходимо
     if generate_nx_ny:
@@ -340,8 +340,12 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
         str_count_layers = f';{layer + 1}/{amount_layers}\n'
         write_g_code_line = lambda line: gcode_file.write(f'{line:{16}}{str_count_layers}')
 
-        write_g_code_line(f'G1 Z{r(start_z + z_offset)}')
-        write_g_code_line(f'G1 X{r(start_x)} Y{r(start_y)}')
+        # Вычисляем позицию Z для укладки слоя
+        z_layer_position = layer_laying_position_z + z_offset if is_growing_z else layer_laying_position_z
+
+        # Выезд на позицию для укладки слоя (возможно это надо удалить)
+        write_g_code_line(f'G1 Z{r(z_layer_position)}')
+        write_g_code_line(f'G1 X{r(layer_laying_position_x)} Y{r(layer_laying_position_y)}')
 
         # Цикл рядов по Y
         for row in rows:
@@ -383,10 +387,10 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
             start_hit = 0
             finish_hit = num_pitch
 
-        # Подъём головы и отъезд на стартовые координаты
-        write_g_code_line(f'G1 Z{r(start_z + z_offset)}')
-        write_g_code_line(f'G1 X{r(start_x)} Y{r(start_y)}')
-        
+        # Выезд на позицию для укладки слоя
+        write_g_code_line(f'G1 Z{r(z_layer_position)}')
+        write_g_code_line(f'G1 X{r(layer_laying_position_x)} Y{r(layer_laying_position_y)}')
+
         # Пауза P милисекунд
         write_g_code_line(f'G4 P{r(pause * 1000)}')
         
