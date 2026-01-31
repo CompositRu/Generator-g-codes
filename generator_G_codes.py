@@ -297,6 +297,9 @@ def generate_G_codes_file(data_dict, display_percent_progress_func):
     write_info_to_prehead('Количество ударов на 1 слой', num_pitch * num_step_x * num_row_y)
     write_info_to_prehead("Количество слоёв для 50'000 ударов", 50000 // (num_pitch * num_step_x * num_row_y))
     write_empty_line()
+    write_info_to_prehead('Плотность пробивки (уд/кв.см)', num_pitch / cell_size_x / cell_size_y * 100)
+    write_info_to_prehead("Количество ударов в элементарную ячейку", f'{num_pitch}')
+    write_empty_line()
     write_info_to_prehead("Параметры паттерна nx, ny", f'{nx}, {ny}')
     if is_random_offsets:
         gcode_file.write(f'; Есть смещения перед каждым ударом на случайную величину от 0 до {coefficient_random_offsets} мм вдоль Х и Y в любом направлении\n') 
