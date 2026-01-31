@@ -68,19 +68,19 @@ def extract_commands_from_file(filepath: str) -> List[str]:
 
 def compare_gcode_files(file1: str, file2: str, show_warnings: bool = True) -> Tuple[bool, List[str]]:
     """
-    Сравнивает два G-code файла, игнорируя комментарии.
+    Сравнивает два G-code файла по последовательности команд, игнорируя комментарии и позицию строк.
 
     Args:
-        file1: Путь к первому файлу
-        file2: Путь ко второму файлу
-        show_warnings: Показывать ли предупреждения о различиях в комментариях
+        file1: Путь к первому файлу (reference)
+        file2: Путь ко второму файлу (generated)
+        show_warnings: Не используется, оставлен для обратной совместимости
 
     Returns:
         Кортеж (файлы_идентичны, список_предупреждений)
     """
     warnings_list = []
 
-    # Извлекаем команды из обоих файлов
+    # Извлекаем команды из обоих файлов (без комментариев)
     commands1 = extract_commands_from_file(file1)
     commands2 = extract_commands_from_file(file2)
 
@@ -88,46 +88,85 @@ def compare_gcode_files(file1: str, file2: str, show_warnings: bool = True) -> T
     if len(commands1) != len(commands2):
         return False, [f"Разное количество команд: {len(commands1)} vs {len(commands2)}"]
 
-    # Сравниваем команды построчно
+    # Сравниваем команды по порядку (игнорируя их позицию в файле)
     files_identical = True
+    command_errors = []  # Список индексов команд, которые различаются
 
-    with open(file1, 'r', encoding='utf-8') as f1, open(file2, 'r', encoding='utf-8') as f2:
-        lines1 = f1.readlines()
-        lines2 = f2.readlines()
+    for cmd_idx in range(len(commands1)):
+        if commands1[cmd_idx] != commands2[cmd_idx]:
+            files_identical = False
+            command_errors.append(cmd_idx)
 
-        max_lines = max(len(lines1), len(lines2))
+    # Если есть ошибки, формируем детальный вывод с контекстом
+    if command_errors:
+        # Читаем файлы для получения контекста
+        with open(file1, 'r', encoding='utf-8') as f1:
+            lines1 = f1.readlines()
+        with open(file2, 'r', encoding='utf-8') as f2:
+            lines2 = f2.readlines()
 
-        for i in range(max_lines):
-            line1 = lines1[i].strip() if i < len(lines1) else ''
-            line2 = lines2[i].strip() if i < len(lines2) else ''
+        # Находим первую ошибку
+        first_error_cmd_idx = command_errors[0]
 
-            cmd1, cmt1 = parse_gcode_line(line1)
-            cmd2, cmt2 = parse_gcode_line(line2)
+        # Функция для поиска строки с командой по индексу
+        def find_command_line_number(lines):
+            """Находит номер строки, где находится команда с индексом first_error_cmd_idx."""
+            cmd_count = 0
+            for line_idx, line in enumerate(lines):
+                cmd, _ = parse_gcode_line(line.strip())
+                if cmd:  # Если есть команда
+                    if cmd_count == first_error_cmd_idx:
+                        return line_idx
+                    cmd_count += 1
+            return -1
 
-            # Сравниваем команды
-            if cmd1 != cmd2:
-                files_identical = False
-                warnings_list.append(
-                    f"Строка {i+1}: Различие в командах\n"
-                    f"  Файл 1: '{cmd1}'\n"
-                    f"  Файл 2: '{cmd2}'"
-                )
-            # Проверяем комментарии (только для warning)
-            elif show_warnings and cmt1 != cmt2:
-                # Если обе строки - только комментарии
-                if not cmd1 and not cmd2:
-                    warnings_list.append(
-                        f"Строка {i+1}: Различие в заголовке (только комментарий)\n"
-                        f"  Файл 1: ';{cmt1}'\n"
-                        f"  Файл 2: ';{cmt2}'"
-                    )
-                # Если есть команда, но комментарии разные
-                elif cmd1:
-                    warnings_list.append(
-                        f"Строка {i+1}: Различие в комментарии к команде '{cmd1}'\n"
-                        f"  Файл 1: ';{cmt1}'\n"
-                        f"  Файл 2: ';{cmt2}'"
-                    )
+        # Находим позицию ошибочной команды в обоих файлах
+        error_line1 = find_command_line_number(lines1)
+        error_line2 = find_command_line_number(lines2)
+
+        # Формируем вывод с контекстом
+        error_msg = f"\n{'='*70}\n"
+        error_msg += f"ПЕРВАЯ ОШИБКА: КОМАНДА #{first_error_cmd_idx + 1} РАЗЛИЧАЕТСЯ:\n"
+        error_msg += f"{'='*70}\n\n"
+        error_msg += f"  Файл 1 (reference):  '{commands1[first_error_cmd_idx]}'\n"
+        error_msg += f"  Файл 2 (generated):  '{commands2[first_error_cmd_idx]}'\n\n"
+
+        # Показываем контекст из файла 1
+        if error_line1 != -1:
+            context_start = max(0, error_line1 - 3)
+            context_end = min(len(lines1), error_line1 + 4)
+
+            error_msg += "КОНТЕКСТ ИЗ ФАЙЛА 1 (reference.tap):\n"
+            error_msg += "-" * 50 + "\n"
+            for idx in range(context_start, context_end):
+                marker = ">>> " if idx == error_line1 else "    "
+                error_msg += f"{marker}Строка {idx+1}: {lines1[idx].rstrip()}\n"
+            error_msg += "\n"
+
+        # Показываем контекст из файла 2
+        if error_line2 != -1:
+            context_start = max(0, error_line2 - 3)
+            context_end = min(len(lines2), error_line2 + 4)
+
+            error_msg += "КОНТЕКСТ ИЗ ФАЙЛА 2 (test_generated.tap):\n"
+            error_msg += "-" * 50 + "\n"
+            for idx in range(context_start, context_end):
+                marker = ">>> " if idx == error_line2 else "    "
+                error_msg += f"{marker}Строка {idx+1}: {lines2[idx].rstrip()}\n"
+
+        error_msg += "\n" + "=" * 70
+        error_msg += f"\n\nВсего найдено {len(command_errors)} различий в командах."
+
+        # Показываем еще несколько примеров
+        if len(command_errors) > 1:
+            error_msg += f"\n\nСледующие несколько различий:"
+            for err_idx in command_errors[1:min(6, len(command_errors))]:
+                error_msg += f"\n  Команда #{err_idx+1}: '{commands1[err_idx]}' vs '{commands2[err_idx]}'"
+
+            if len(command_errors) > 6:
+                error_msg += f"\n  ... и ещё {len(command_errors) - 6} различий"
+
+        warnings_list.append(error_msg)
 
     return files_identical, warnings_list
 
@@ -180,8 +219,8 @@ class TestGCodeComparison(unittest.TestCase):
 
             # Файлы должны быть идентичны по командам
             self.assertTrue(identical)
-            # Но должны быть предупреждения о различиях в комментариях
-            self.assertGreater(len(warnings_list), 0)
+            # Комментарии игнорируются полностью, предупреждений не должно быть
+            self.assertEqual(len(warnings_list), 0)
 
         finally:
             # Удаляем временные файлы
@@ -587,13 +626,13 @@ class TestIntegrationWithReference(unittest.TestCase):
             "Порядок прохождения рядов": "По очереди",
             "Задание размеров каркаса": "По габаритам",
             "Игольницы (ИП головы)": {
-                "Г1": {
+                "Игольница_интеграционный_тест": {
                     "X": 4,
                     "Y": 33,
                     "path": "data/g1.png"
                 }
             },
-            "Выбранная игольница (ИП игольница)": "Г1"
+            "Выбранная игольница (ИП игольница)": "Игольница_интеграционный_тест"
         }
 
     def test_compare_with_reference(self):
