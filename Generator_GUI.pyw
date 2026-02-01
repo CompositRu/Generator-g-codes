@@ -383,7 +383,7 @@ def is_big_size_future_file(data_dict):
     y = data_dict['Количество шагов головы']['Y']
     n = data_dict['Параметры паттерна']['Кол-во ударов']
     hits = (l + e) * x * y * n
-    if hits > 100_000:
+    if hits > 500_000:
         return True
     return False
 
@@ -415,7 +415,7 @@ def check_all_conditions(data_dict):
     # Проверяем размер будущего файла   
     if is_big_size_future_file(data_dict):
         res = messagebox.askyesno('Создаётся большой файл', 
-            'Файл с g кодами содержит больше 100 000 ударов. Вы уверены, что хотите его создать?')
+            'Файл с g кодами содержит больше 500 000 ударов. Вы уверены, что хотите его создать?')
         return res
 
     return True
@@ -786,7 +786,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.9.0")
+    window.title("Генератор G кодов для ИП станка v.1.9.1")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна
