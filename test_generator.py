@@ -11,13 +11,13 @@ import os
 import json
 import warnings
 from typing import List, Tuple
-from generator_G_codes import (
+from core import (
     generate_G_codes_file,
     generate_offset_list,
     get_nx_ny,
     get_ordered_list_of_rows,
-    check_nums_x_y,
-    get_result_offset_list
+    check_nums_x_y_from_dict as check_nums_x_y,
+    get_result_offset_list,
 )
 
 
