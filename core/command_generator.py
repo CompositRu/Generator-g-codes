@@ -83,6 +83,7 @@ class CommandGenerator:
         self.is_random_order = d['Случайный порядок ударов']
         self.is_random_offsets = d['Случайные смещения']
         self.is_rotation_direction = d['Чередование направлений прохода слоя']
+        self.is_swap_xy = d['Смена осей X↔Y']
         self.coefficient_random_offsets = d['Коэффициент случайных смещений']
         self.speed = d['Скорость движения осей станка']
         self.acceleration = d['Ускорение осей станка (мм/с²)']
@@ -101,6 +102,22 @@ class CommandGenerator:
         if self.selected_type_frame_size == 'По габаритам':
             self.num_step_x = round_to_greater(self.frame_length_x / self.head_width_x)
             self.num_row_y = round_to_greater(self.frame_length_y / self.head_width_y)
+
+    def _move_cmd(self, x=None, y=None, z=None) -> MoveCommand:
+        """
+        Создаёт команду перемещения с учётом флага смены осей.
+
+        Args:
+            x: Координата X (или Y, если is_swap_xy=True)
+            y: Координата Y (или X, если is_swap_xy=True)
+            z: Координата Z
+
+        Returns:
+            MoveCommand с учётом смены осей
+        """
+        if self.is_swap_xy:
+            return MoveCommand(x=y, y=x, z=z)
+        return MoveCommand(x=x, y=y, z=z)
 
     def generate_layers(self) -> List[Layer]:
         """
@@ -180,9 +197,9 @@ class CommandGenerator:
                           if self.is_growing_z else self.layer_laying_position_z)
 
         # Выезд на позицию для укладки слоя
-        commands.append(MoveCommand(z=r(z_layer_position)))
-        commands.append(MoveCommand(x=r(self.layer_laying_position_x),
-                                   y=r(self.layer_laying_position_y)))
+        commands.append(self._move_cmd(z=r(z_layer_position)))
+        commands.append(self._move_cmd(x=r(self.layer_laying_position_x),
+                                       y=r(self.layer_laying_position_y)))
 
         # Цикл рядов по Y
         for row in rows:
@@ -210,14 +227,14 @@ class CommandGenerator:
                         current_x += self.coefficient_random_offsets * (random.random() - 0.5) * 2
                         current_y += self.coefficient_random_offsets * (random.random() - 0.5) * 2
 
-                    commands.append(MoveCommand(x=r(current_x), y=r(current_y)))
-                    commands.append(MoveCommand(z=r(z_offset - needle_depth)))
-                    commands.append(MoveCommand(z=r(self.dist_to_material + z_offset)))
+                    commands.append(self._move_cmd(x=r(current_x), y=r(current_y)))
+                    commands.append(self._move_cmd(z=r(z_offset - needle_depth)))
+                    commands.append(self._move_cmd(z=r(self.dist_to_material + z_offset)))
 
         # Выезд на позицию для укладки слоя
-        commands.append(MoveCommand(z=r(z_layer_position)))
-        commands.append(MoveCommand(x=r(self.layer_laying_position_x),
-                                   y=r(self.layer_laying_position_y)))
+        commands.append(self._move_cmd(z=r(z_layer_position)))
+        commands.append(self._move_cmd(x=r(self.layer_laying_position_x),
+                                       y=r(self.layer_laying_position_y)))
 
         # Пауза
         commands.append(PauseCommand(milliseconds=self.pause * 1000))
