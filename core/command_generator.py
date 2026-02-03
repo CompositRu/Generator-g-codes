@@ -85,6 +85,7 @@ class CommandGenerator:
         self.is_rotation_direction = d['Чередование направлений прохода слоя']
         self.coefficient_random_offsets = d['Коэффициент случайных смещений']
         self.speed = d['Скорость движения осей станка']
+        self.acceleration = d['Ускорение осей станка (мм/с²)']
         self.order = d["Порядок прохождения рядов"]
 
         # Вычисляем параметры паттерна, если необходимо

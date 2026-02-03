@@ -36,7 +36,10 @@ def generate_G_codes_file(data_dict: Dict[str, Any],
     total_layers = generator.amount_layers + generator.amount_virtual_layers
 
     # Рассчитываем время работы
-    time_estimator = TimeEstimator(speed_mm_per_min=generator.speed)
+    time_estimator = TimeEstimator(
+        speed_mm_per_min=generator.speed,
+        acceleration=generator.acceleration
+    )
     time_estimate = time_estimator.estimate_by_one_layer(layers)
     work_time_str = time_estimate.to_dhms()
     layer_time_str = time_estimator.estimate_layer(layers[0].commands).to_dhms()
