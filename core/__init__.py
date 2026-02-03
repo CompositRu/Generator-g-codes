@@ -24,11 +24,11 @@ from .formatter import (
     PreheadParams,
 )
 
-# from .time_estimator import (
-#     TimeEstimator,
-#     TimeEstimate,
-#     ACCEL_LINEAR_DEFAULT,
-# )
+from .time_estimator import (
+    TimeEstimator,
+    TimeEstimate,
+    ACCEL_LINEAR_DEFAULT,
+)
 
 from .geometry import (
     generate_offset_list,
@@ -64,9 +64,9 @@ __all__ = [
     'GCodeFormatter',
     'PreheadParams',
     # Time
-    # 'TimeEstimator',
-    # 'TimeEstimate',
-    # 'ACCEL_LINEAR_DEFAULT',
+    'TimeEstimator',
+    'TimeEstimate',
+    'ACCEL_LINEAR_DEFAULT',
     # Geometry
     'generate_offset_list',
     'get_result_offset_list',

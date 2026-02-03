@@ -10,7 +10,7 @@ from typing import Dict, Any, Callable
 from .command_generator import CommandGenerator
 from .formatter import GCodeFormatter
 from .file_utils import get_filename_path_and_create_directory_if_need
-# from .time_estimator import TimeEstimator
+from .time_estimator import TimeEstimator
 
 
 def generate_G_codes_file(data_dict: Dict[str, Any],
@@ -30,10 +30,9 @@ def generate_G_codes_file(data_dict: Dict[str, Any],
     total_layers = generator.amount_layers + generator.amount_virtual_layers
 
     # Рассчитываем время работы
-    # time_estimator = TimeEstimator(speed_mm_per_min=generator.speed)
-    # time_estimate = time_estimator.estimate_by_one_layer(layers)
-    # work_time_str = time_estimate.to_dhms()
-    work_time_str = ""
+    time_estimator = TimeEstimator(speed_mm_per_min=generator.speed)
+    time_estimate = time_estimator.estimate_by_one_layer(layers)
+    work_time_str = time_estimate.to_dhms()
 
     # Открываем файл и записываем
     path = get_filename_path_and_create_directory_if_need(data_dict)
