@@ -9,7 +9,14 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import Combobox, Progressbar
 import json
-from generator_G_codes import *
+from core import (
+    check_dict_keys,
+    get_nx_ny,
+    get_result_offset_list,
+    get_filename,
+    get_message,
+    generate_G_codes_file,
+)
 from os import rename as rename_file
 from os.path import exists as is_existed
 import threading
@@ -19,6 +26,14 @@ try:
     import plotly.express as px
 except Exception:
     px = None  # покажем понятную ошибку при попытке построения
+
+
+class VisualizationConfig:
+    """Конфигурация для визуализации паттерна пробивки"""
+    INCLUDE_PLOTLYJS = 'cdn'  # 'cdn' - меньший размер файла, требует интернет
+                               # True - полный Plotly.js в файле (работает offline)
+    OUTPUT_DIR = 'visualization'  # TODO: пока не применяется, файл сохраняется рядом со скриптом/exe
+    OUTPUT_FILENAME = 'visualization_pattern.html'
 
 
 def expand_with_neighbors(points, cell_size_x, cell_size_y):
@@ -110,7 +125,14 @@ def _plot_offsets(points, num_pitch, cell_size_x, cell_size_y, title = "Патт
 
     fig.update_traces(mode="markers", marker=dict(size=12))
     fig.update_yaxes(scaleanchor="x", scaleratio=1) # одинаковый масштаб по X и Y
-    fig.show()
+
+    # Сохраняем HTML файл рядом со скриптом/exe и открываем в браузере
+    html_path = get_resource_path(VisualizationConfig.OUTPUT_FILENAME)
+    fig.write_html(
+        html_path,
+        include_plotlyjs=VisualizationConfig.INCLUDE_PLOTLYJS,
+        auto_open=True
+    )
 
 
 def get_true_form_for_word_sloy(n):
