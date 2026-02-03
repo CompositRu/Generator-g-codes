@@ -14,13 +14,19 @@ from .time_estimator import TimeEstimator
 
 
 def generate_G_codes_file(data_dict: Dict[str, Any],
-                          display_percent_progress_func: Callable[[float], None]) -> None:
+                          display_percent_progress_func: Callable[[float], None]) -> Dict[str, Any]:
     """
     Генерирует G-code файл.
 
     Args:
         data_dict: Словарь с параметрами генерации
         display_percent_progress_func: Функция для отображения прогресса (0-100)
+
+    Returns:
+        Словарь с информацией о генерации:
+        - work_time_str: общее время работы
+        - layer_time_str: время одного слоя
+        - density: плотность пробивки (уд/кв.см)
     """
     # Создаём генератор команд
     generator = CommandGenerator(data_dict)
@@ -33,6 +39,10 @@ def generate_G_codes_file(data_dict: Dict[str, Any],
     time_estimator = TimeEstimator(speed_mm_per_min=generator.speed)
     time_estimate = time_estimator.estimate_by_one_layer(layers)
     work_time_str = time_estimate.to_dhms()
+    layer_time_str = time_estimator.estimate_layer(layers[0].commands).to_dhms()
+
+    # Рассчитываем плотность пробивки (уд/кв.см)
+    density = generator.num_pitch / generator.cell_size_x / generator.cell_size_y * 100
 
     # Открываем файл и записываем
     path = get_filename_path_and_create_directory_if_need(data_dict)
@@ -41,7 +51,10 @@ def generate_G_codes_file(data_dict: Dict[str, Any],
         formatter = GCodeFormatter(gcode_file, generator.amount_layers)
 
         # Записываем заголовок
-        formatter.write_prehead(generator.get_prehead_params(work_time=work_time_str))
+        formatter.write_prehead(generator.get_prehead_params(
+            work_time=work_time_str,
+            layer_time=layer_time_str
+        ))
         formatter.write_speed(generator.speed)
 
         # Записываем слои
@@ -49,3 +62,10 @@ def generate_G_codes_file(data_dict: Dict[str, Any],
             formatter.write_layer(layer)
             # Отображаем процесс на progressbar
             display_percent_progress_func(i / total_layers * 100)
+
+    # Возвращаем информацию о генерации
+    return {
+        'work_time_str': work_time_str,
+        'layer_time_str': layer_time_str,
+        'density': density
+    }

@@ -479,18 +479,25 @@ def progress_generate(win_with_progress, bar, data_dict):
     # Создаём функцию для отображения процесса на progressbar
     def display_progress(progress):
         bar['value'] = progress
-    
+
     # Генерируем
     try:
-        generate_G_codes_file(data_dict, display_progress)
+        result = generate_G_codes_file(data_dict, display_progress)
     except BaseException as e:
         win_with_progress.destroy()
         messagebox.showerror('Всё. Херня. Звони Артёму', e)
         return
 
+    # Формируем сообщение с информацией
+    message = f"Сгенерирован файл\n{get_filename(data_dict)}\n\n"
+    message += f"Время одного слоя: {result['layer_time_str']}\n"
+    message += f"Время всех слоёв: {result['work_time_str']}\n\n"
+    message += f"Плотность пробивки: {result['density']:.2f} уд/кв.см\n\n"
+    message += get_message(data_dict)
+
     # Закрываем окно
     win_with_progress.destroy()
-    messagebox.showinfo('Всё прошло удачно', f"Сгенерирован файл\n{get_filename(data_dict)}\n\n{get_message(data_dict)}" ) 
+    messagebox.showinfo('Всё прошло удачно', message) 
 
 
 def display_parameters_recursion(frame, data_dict, i_row):
@@ -808,7 +815,7 @@ if __name__ == "__main__":
         heads = json.load(f)
 
     window = Tk()  
-    window.title("Генератор G кодов для ИП станка v.1.10.0")
+    window.title("Генератор G кодов для ИП станка v.1.10.1")
 
     try:
         #На linux системах tkinter не отображает иконку в title bar окна

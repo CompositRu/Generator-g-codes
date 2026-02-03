@@ -27,6 +27,7 @@ class PreheadParams:
     num_row_y: int
     frame_height: int
     amount_layers: int
+    amount_virtual_layers: int
     num_pitch: int
     cell_size_x: float
     cell_size_y: float
@@ -36,6 +37,7 @@ class PreheadParams:
     coefficient_random_offsets: float
     is_frame_by_dimensions: bool  # True = 'По габаритам', False = 'По шагам'
     work_time: str = ""  # Время работы файла на станке
+    layer_time: str = ""  # Время работы над одним слоем
 
 
 class GCodeFormatter:
@@ -74,7 +76,9 @@ class GCodeFormatter:
         self._write_info('ИП голова', params.head_name, w)
         self._write_empty_line()
         if params.work_time:
-            self._write_info('Время работы', params.work_time, w)
+            if params.layer_time:
+                self._write_info('Время одного слоя', params.layer_time, w)
+            self._write_info('Время всех слоёв', params.work_time, w)
             self._write_empty_line()
         self._write_info('Иглы по Х', params.needles_x, w)
         self._write_info('Иглы по Y', params.needles_y, w)
@@ -90,6 +94,7 @@ class GCodeFormatter:
         self._write_info('Высота каркаса по Z', int(params.frame_height), w)
         self._write_empty_line()
         self._write_info('Слои', params.amount_layers, w)
+        self._write_info('Добивочные слои', params.amount_virtual_layers, w)
         self._write_empty_line()
 
         # Расширенное форматирование для длинных названий
@@ -100,24 +105,26 @@ class GCodeFormatter:
                         50000 // hits_per_layer if hits_per_layer > 0 else 0, w)
         self._write_empty_line()
 
+        self._write_info('Параметры паттерна nx, ny', f'{params.nx}, {params.ny}', w)
+        self._write_empty_line()
+
         # Плотность пробивки
         density = params.num_pitch / params.cell_size_x / params.cell_size_y * 100
         self._write_info('Плотность пробивки (уд/кв.см)', density, w)
         self._write_info('Количество ударов в элементарную ячейку', f'{params.num_pitch}', w)
         self._write_empty_line()
-        self._write_info('Параметры паттерна nx, ny', f'{params.nx}, {params.ny}', w)
+
+        clarification = "c погрешностью на случайные смещения" if params.is_random_offsets else ""
+        repeat_layers = int(params.nx * params.ny / params.num_pitch)
+        self._file.write(f'; Через каждые {repeat_layers} слоёв бьём в теже точки {clarification}\n')
+        self._write_empty_line()
 
         if params.is_random_offsets:
             self._file.write(
                 f'; Есть смещения перед каждым ударом на случайную величину '
                 f'от 0 до {params.coefficient_random_offsets} мм вдоль Х и Y в любом направлении\n'
             )
-
-        self._write_empty_line()
-        clarification = "c погрешностью на случайные смещения" if params.is_random_offsets else ""
-        repeat_layers = int(params.nx * params.ny / params.num_pitch)
-        self._file.write(f'; Через каждые {repeat_layers} слоёв бьём в теже точки {clarification}\n')
-        self._write_empty_line()
+            self._write_empty_line()
 
     def write_speed(self, speed: float) -> None:
         """

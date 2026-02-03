@@ -227,12 +227,13 @@ class CommandGenerator:
             commands=commands
         )
 
-    def get_prehead_params(self, work_time: str = "") -> PreheadParams:
+    def get_prehead_params(self, work_time: str = "", layer_time: str = "") -> PreheadParams:
         """
         Возвращает параметры для записи заголовка файла.
 
         Args:
             work_time: Строка с временем работы файла на станке
+            layer_time: Строка с временем работы над одним слоем
 
         Returns:
             PreheadParams с параметрами
@@ -247,6 +248,7 @@ class CommandGenerator:
             num_row_y=self.num_row_y,
             frame_height=self.frame_height,
             amount_layers=self.amount_layers,
+            amount_virtual_layers=self.amount_virtual_layers,
             num_pitch=self.num_pitch,
             cell_size_x=self.cell_size_x,
             cell_size_y=self.cell_size_y,
@@ -255,5 +257,6 @@ class CommandGenerator:
             is_random_offsets=self.is_random_offsets,
             coefficient_random_offsets=self.coefficient_random_offsets,
             is_frame_by_dimensions=(self.selected_type_frame_size == 'По габаритам'),
-            work_time=work_time
+            work_time=work_time,
+            layer_time=layer_time
         )

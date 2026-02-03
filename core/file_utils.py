@@ -55,7 +55,7 @@ def get_filename(data_dict: Dict[str, Any]) -> str:
         frame_length_x = num_step_x * head_width_x
         frame_length_y = num_row_y * head_width_y
 
-    return f'{frame_length_x}x{frame_length_y}x{frame_height} {num_pitch} ударов {head_name}.tap'
+    return f'{frame_length_x}x{frame_length_y}x{frame_height}_{num_pitch}_ударов_{head_name}.tap'
 
 
 def get_filename_path_and_create_directory_if_need(data_dict: Dict[str, Any]) -> str:
