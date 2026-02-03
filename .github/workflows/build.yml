@@ -12,6 +12,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -58,3 +61,31 @@ jobs:
           delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup orphaned tags
+        run: |
+          # Fetch all tags from remote
+          git fetch --tags
+
+          # Get all tags matching our pattern
+          $tags = git tag -l "build-*" | Sort-Object
+
+          Write-Host "Found $($tags.Count) build tags"
+
+          # Keep only the last 3 tags
+          $tagsToDelete = $tags | Select-Object -SkipLast 3
+
+          if ($tagsToDelete.Count -gt 0) {
+            Write-Host "Deleting $($tagsToDelete.Count) old tags..."
+
+            # Delete old tags both locally and remotely
+            foreach ($tag in $tagsToDelete) {
+              Write-Host "Deleting tag: $tag"
+              git tag -d $tag 2>&1 | Out-Null
+              git push origin :refs/tags/$tag 2>&1
+            }
+
+            Write-Host "Cleanup completed"
+          } else {
+            Write-Host "No tags to delete"
+          }
