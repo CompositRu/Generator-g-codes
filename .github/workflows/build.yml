@@ -29,7 +29,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --windowed --icon=symbol.ico --name "plane_generator_for_npm" --add-data "symbol.ico;." Generator_GUI.pyw
+          pyinstaller --onefile --windowed --icon=symbol.ico --name "plane_generator_for_npm" --add-data "symbol.ico;." main.py
 
       - name: Create release package
         run: |
