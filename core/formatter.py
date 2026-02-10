@@ -6,7 +6,7 @@
 - GCodeFormatter — класс для записи команд в файл
 """
 
-from typing import TextIO, Any, List
+from typing import TextIO, Any
 from dataclasses import dataclass
 from .commands import GCodeCommand, Layer
 
@@ -125,15 +125,6 @@ class GCodeFormatter:
                 f'от 0 до {params.coefficient_random_offsets} мм вдоль Х и Y в любом направлении\n'
             )
             self._write_empty_line()
-
-    def write_speed(self, speed: float) -> None:
-        """
-        Записывает команду установки скорости.
-
-        Args:
-            speed: Скорость в мм/мин
-        """
-        self._file.write(f'F {speed:.1f}\n')
 
     def write_layer_header(self, layer_number: int, is_virtual: bool) -> None:
         """

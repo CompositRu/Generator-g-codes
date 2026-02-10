@@ -356,7 +356,11 @@ class TestEdgeCases(unittest.TestCase):
             "Количество пустых слоёв": 0,
             "Толщина слоя (мм)": 0.82,
             "Расстояние от каркаса до головы перед ударом (мм)": 30,
-            "Скорость движения осей станка": 3000,
+            "Скорость (мм/мин)": {
+                "Движение осей X и Y": 3000,
+                "Внедрение игл по Z": 3000,
+                "Извлечение игл по Z": 3000
+            },
             "Ускорение осей станка (мм/с²)": 300,
             "Пробивка": {
                 "Пробивка с нарастанием глубины": False,
@@ -489,7 +493,7 @@ class TestEdgeCases(unittest.TestCase):
             # Извлекаем глубины
             depths = []
             for cmd in z_down_commands[:10]:  # Берем первые 10 для проверки
-                z_value = float(cmd.split('Z')[1])
+                z_value = float(cmd.split('Z')[1].split()[0])
                 depths.append(abs(z_value))
 
             # Проверяем, что начальная глубина не меньше минимальной
@@ -544,13 +548,13 @@ class TestEdgeCases(unittest.TestCase):
 
             commands = extract_commands_from_file(output_file)
 
-            # Проверяем наличие команды установки скорости
-            speed_commands = [cmd for cmd in commands if cmd.startswith('F ')]
-            self.assertGreater(len(speed_commands), 0)
-
             # Проверяем наличие команд движения
             g1_commands = [cmd for cmd in commands if cmd.startswith('G1 ')]
             self.assertGreater(len(g1_commands), 0)
+
+            # Проверяем наличие скорости F в командах движения
+            f_commands = [cmd for cmd in g1_commands if 'F' in cmd]
+            self.assertGreater(len(f_commands), 0)
 
             # Проверяем наличие команд паузы
             g4_commands = [cmd for cmd in commands if cmd.startswith('G4 P')]
@@ -587,7 +591,11 @@ class TestIntegrationWithReference(unittest.TestCase):
             "Количество пустых слоёв": 10,
             "Толщина слоя (мм)": 0.82,
             "Расстояние от каркаса до головы перед ударом (мм)": 30,
-            "Скорость движения осей станка": 3000,
+            "Скорость (мм/мин)": {
+                "Движение осей X и Y": 3000,
+                "Внедрение игл по Z": 3000,
+                "Извлечение игл по Z": 3000
+            },
             "Ускорение осей станка (мм/с²)": 300,
             "Пробивка": {
                 "Пробивка с нарастанием глубины": False,

@@ -58,7 +58,6 @@ def generate_G_codes_file(data_dict: Dict[str, Any],
             work_time=work_time_str,
             layer_time=layer_time_str
         ))
-        formatter.write_speed(generator.speed)
 
         # Записываем слои
         for i, layer in enumerate(layers):

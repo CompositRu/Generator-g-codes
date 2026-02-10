@@ -85,7 +85,10 @@ class CommandGenerator:
         self.is_rotation_direction = d['Чередование направлений прохода слоя']
         self.is_swap_xy = d['Смена осей X↔Y']
         self.coefficient_random_offsets = d['Коэффициент случайных смещений']
-        self.speed = d['Скорость движения осей станка']
+        self.speed_xy = d['Скорость (мм/мин)']['Движение осей X и Y']
+        self.speed_z_insert = d['Скорость (мм/мин)']['Внедрение игл по Z']
+        self.speed_z_extract = d['Скорость (мм/мин)']['Извлечение игл по Z']
+        self.speed = self.speed_xy  # для совместимости с TimeEstimator
         self.acceleration = d['Ускорение осей станка (мм/с²)']
         self.order = d["Порядок прохождения рядов"]
 
@@ -103,7 +106,7 @@ class CommandGenerator:
             self.num_step_x = round_to_greater(self.frame_length_x / self.head_width_x)
             self.num_row_y = round_to_greater(self.frame_length_y / self.head_width_y)
 
-    def _move_cmd(self, x=None, y=None, z=None) -> MoveCommand:
+    def _move_cmd(self, x=None, y=None, z=None, f=None) -> MoveCommand:
         """
         Создаёт команду перемещения с учётом флага смены осей.
 
@@ -111,13 +114,14 @@ class CommandGenerator:
             x: Координата X (или Y, если is_swap_xy=True)
             y: Координата Y (или X, если is_swap_xy=True)
             z: Координата Z
+            f: Скорость подачи (мм/мин)
 
         Returns:
             MoveCommand с учётом смены осей
         """
         if self.is_swap_xy:
-            return MoveCommand(x=y, y=x, z=z)
-        return MoveCommand(x=x, y=y, z=z)
+            return MoveCommand(x=y, y=x, z=z, f=f)
+        return MoveCommand(x=x, y=y, z=z, f=f)
 
     def generate_layers(self) -> List[Layer]:
         """
@@ -197,9 +201,10 @@ class CommandGenerator:
                           if self.is_growing_z else self.layer_laying_position_z)
 
         # Выезд на позицию для укладки слоя
-        commands.append(self._move_cmd(z=r(z_layer_position)))
+        commands.append(self._move_cmd(z=r(z_layer_position), f=self.speed_z_extract))
         commands.append(self._move_cmd(x=r(self.layer_laying_position_x),
-                                       y=r(self.layer_laying_position_y)))
+                                       y=r(self.layer_laying_position_y),
+                                       f=self.speed_xy))
 
         # Цикл рядов по Y
         for row in rows:
@@ -227,14 +232,18 @@ class CommandGenerator:
                         current_x += self.coefficient_random_offsets * (random.random() - 0.5) * 2
                         current_y += self.coefficient_random_offsets * (random.random() - 0.5) * 2
 
-                    commands.append(self._move_cmd(x=r(current_x), y=r(current_y)))
-                    commands.append(self._move_cmd(z=r(z_offset - needle_depth)))
-                    commands.append(self._move_cmd(z=r(self.dist_to_material + z_offset)))
+                    commands.append(self._move_cmd(x=r(current_x), y=r(current_y),
+                                                   f=self.speed_xy))
+                    commands.append(self._move_cmd(z=r(z_offset - needle_depth),
+                                                   f=self.speed_z_insert))
+                    commands.append(self._move_cmd(z=r(self.dist_to_material + z_offset),
+                                                   f=self.speed_z_extract))
 
         # Выезд на позицию для укладки слоя
-        commands.append(self._move_cmd(z=r(z_layer_position)))
+        commands.append(self._move_cmd(z=r(z_layer_position), f=self.speed_z_extract))
         commands.append(self._move_cmd(x=r(self.layer_laying_position_x),
-                                       y=r(self.layer_laying_position_y)))
+                                       y=r(self.layer_laying_position_y),
+                                       f=self.speed_xy))
 
         # Пауза
         commands.append(PauseCommand(milliseconds=self.pause * 1000))

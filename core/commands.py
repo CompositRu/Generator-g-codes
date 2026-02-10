@@ -44,9 +44,10 @@ class MoveCommand(GCodeCommand):
     x: Optional[float] = None
     y: Optional[float] = None
     z: Optional[float] = None
+    f: Optional[float] = None
 
     def to_string(self) -> str:
-        """Преобразует команду в строку 'G1 X... Y... Z...'."""
+        """Преобразует команду в строку 'G1 X... Y... Z... F...'."""
         parts = ["G1"]
         if self.x is not None:
             parts.append(f"X{round(self.x, 1)}")
@@ -54,6 +55,8 @@ class MoveCommand(GCodeCommand):
             parts.append(f"Y{round(self.y, 1)}")
         if self.z is not None:
             parts.append(f"Z{round(self.z, 1)}")
+        if self.f is not None:
+            parts.append(f"F{round(self.f, 1)}")
         return " ".join(parts)
 
     def distance_to(self, other: 'MoveCommand') -> float:

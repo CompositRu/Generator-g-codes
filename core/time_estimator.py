@@ -169,7 +169,12 @@ class TimeEstimator:
 
                 if distance > 0:
                     total_distance += distance
-                    move_time = _time_for_move(distance, self._speed_mm_per_sec,
+                    # Используем скорость из команды, если задана
+                    if cmd.f is not None:
+                        speed = cmd.f / 60.0
+                    else:
+                        speed = self._speed_mm_per_sec
+                    move_time = _time_for_move(distance, speed,
                                                self._acceleration)
                     total_time += move_time
 
