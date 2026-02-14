@@ -5,11 +5,14 @@
 - CommandGenerator — класс для генерации команд послойно
 """
 
+import logging
 import random
 from math import ceil as round_to_greater
 from typing import Dict, Any, List
 
-from .commands import MoveCommand, PauseCommand, Layer
+from .commands import MoveCommand, PauseCommand, RawCommand, Layer
+
+logger = logging.getLogger(__name__)
 from .formatter import PreheadParams
 from .geometry import generate_offset_list, get_nx_ny, get_ordered_list_of_rows
 
@@ -77,6 +80,7 @@ class CommandGenerator:
         self.layer_laying_position_y = d['Позиция при ручной укладки слоя']['Y']
         self.layer_laying_position_z = d['Позиция при ручной укладки слоя']['Z']
         self.pause = d['Позиция при ручной укладки слоя']['Пауза в конце слоя (сек)']
+        self.sound_signal_duration = d['Позиция при ручной укладки слоя']['Звуковой сигнал (сек)']
         self.is_growing_z = d['Позиция при ручной укладки слоя']['Рост Z с каждым слоем']
 
         # Опции
@@ -245,8 +249,27 @@ class CommandGenerator:
                                        y=r(self.layer_laying_position_y),
                                        f=self.speed_xy))
 
-        # Пауза
-        commands.append(PauseCommand(milliseconds=self.pause * 1000))
+        # Звуковой сигнал и пауза
+        pause_sec = self.pause
+        signal_sec = self.sound_signal_duration
+
+        if signal_sec > 0 and signal_sec > pause_sec:
+            logger.warning(
+                "Время звукового сигнала (%.1f сек) больше паузы в конце слоя (%.1f сек). "
+                "Пауза увеличена до %.1f сек.",
+                signal_sec, pause_sec, signal_sec
+            )
+            pause_sec = signal_sec
+
+        if signal_sec > 0:
+            commands.append(RawCommand(code="M3"))
+            commands.append(PauseCommand(milliseconds=signal_sec * 1000))
+            commands.append(RawCommand(code="M5"))
+            remaining_pause = pause_sec - signal_sec
+            if remaining_pause > 0:
+                commands.append(PauseCommand(milliseconds=remaining_pause * 1000))
+        else:
+            commands.append(PauseCommand(milliseconds=pause_sec * 1000))
 
         return Layer(
             layer_number=layer_idx + 1,

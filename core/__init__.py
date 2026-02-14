@@ -2,7 +2,7 @@
 Core модуль генератора G-кодов.
 
 Публичный API:
-- Команды: CommandType, MoveCommand, PauseCommand, SetSpeedCommand, Layer
+- Команды: MoveCommand, PauseCommand, SetSpeedCommand, RawCommand, Layer
 - Форматирование: GCodeFormatter, PreheadParams
 - Время: TimeEstimator, TimeEstimate
 - Геометрия: generate_offset_list, get_result_offset_list, get_nx_ny, и др.
@@ -11,10 +11,10 @@ Core модуль генератора G-кодов.
 """
 
 from .commands import (
-    CommandType,
     GCodeCommand,
     MoveCommand,
     PauseCommand,
+    RawCommand,
     SetSpeedCommand,
     Layer,
 )
@@ -54,10 +54,10 @@ from .generator import generate_G_codes_file
 
 __all__ = [
     # Commands
-    'CommandType',
     'GCodeCommand',
     'MoveCommand',
     'PauseCommand',
+    'RawCommand',
     'SetSpeedCommand',
     'Layer',
     # Formatter

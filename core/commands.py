@@ -5,25 +5,17 @@
 - MoveCommand (G1) — линейное перемещение
 - PauseCommand (G4) — пауза
 - SetSpeedCommand (F) — установка скорости
+- RawCommand — произвольная команда
 - Layer — группа команд для одного слоя
 """
 
-from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional, List
-
-
-class CommandType(Enum):
-    """Типы G-code команд."""
-    MOVE = "G1"       # Линейное перемещение
-    PAUSE = "G4"      # Пауза
-    SET_SPEED = "F"   # Установка скорости
 
 
 @dataclass(frozen=True)
 class GCodeCommand:
     """Базовый класс G-code команды."""
-    command_type: CommandType
 
     def to_string(self) -> str:
         """Преобразует команду в строку G-code."""
@@ -40,7 +32,6 @@ class MoveCommand(GCodeCommand):
         y: Координата Y (мм), None если не меняется
         z: Координата Z (мм), None если не меняется
     """
-    command_type: CommandType = field(default=CommandType.MOVE, repr=False)
     x: Optional[float] = None
     y: Optional[float] = None
     z: Optional[float] = None
@@ -83,7 +74,6 @@ class PauseCommand(GCodeCommand):
     Attributes:
         milliseconds: Длительность паузы в миллисекундах
     """
-    command_type: CommandType = field(default=CommandType.PAUSE, repr=False)
     milliseconds: float = 0
 
     def to_string(self) -> str:
@@ -99,12 +89,25 @@ class SetSpeedCommand(GCodeCommand):
     Attributes:
         speed: Скорость в мм/мин
     """
-    command_type: CommandType = field(default=CommandType.SET_SPEED, repr=False)
     speed: float = 0
 
     def to_string(self) -> str:
         """Преобразует команду в строку 'F ...'."""
         return f"F {self.speed:.1f}"
+
+
+@dataclass(frozen=True)
+class RawCommand(GCodeCommand):
+    """
+    Произвольная G-code команда (например M3, M5).
+
+    Attributes:
+        code: Строка команды
+    """
+    code: str = ""
+
+    def to_string(self) -> str:
+        return self.code
 
 
 @dataclass
