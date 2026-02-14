@@ -141,11 +141,17 @@ class EventHandlers:
     def on_save(self):
         """Сохраняет данные в JSON файлы."""
         data_to_json = recursion_saver(self.state.wd_left)
-        data_to_json["Список вариантов порядка прохождения рядов"] = self.state.order_list
-        data_to_json["Порядок прохождения рядов"] = self.state.wd_right["Комбобокс порядок рядов"].get()
-        data_to_json["Список вариантов задания размеров каркаса"] = self.state.type_frame_size_list
-        data_to_json["Задание размеров каркаса"] = self.state.type_frame_size_list[
-            data_to_json.pop("Номер радиокнопки типа задания размера каркаса")]
+
+        data_to_json["Порядок прохождения рядов"] = {
+            "value": self.state.wd_right["Комбобокс порядок рядов"].get(),
+            "options": self.state.order_list
+        }
+
+        frame_size_index = data_to_json.pop("Номер радиокнопки типа задания размера каркаса")
+        data_to_json["Задание размеров каркаса"] = {
+            "value": self.state.type_frame_size_list[frame_size_index],
+            "options": self.state.type_frame_size_list
+        }
 
         write_to_json_file(get_resource_path('data/data.json'), data_to_json)
 

@@ -57,7 +57,13 @@ class CommandGenerator:
         self.num_row_y = d['Количество шагов головы']['Y']
         self.frame_length_x = d['Габариты каркаса']['X']
         self.frame_length_y = d['Габариты каркаса']['Y']
-        self.selected_type_frame_size = d['Задание размеров каркаса']
+
+        # Поддержка старого (str) и нового (dict) форматов для задания размеров каркаса
+        frame_size_value = d['Задание размеров каркаса']
+        if isinstance(frame_size_value, dict):
+            self.selected_type_frame_size = frame_size_value["value"]
+        else:
+            self.selected_type_frame_size = frame_size_value
 
         # Параметры пробивки
         self.is_progressive_depth = d['Пробивка']['Пробивка с нарастанием глубины']
@@ -82,7 +88,13 @@ class CommandGenerator:
         self.pause = d['Позиция при ручной укладки слоя']['Пауза в конце слоя (сек)']
         self.sound_signal_duration = d['Позиция при ручной укладки слоя']['Звуковой сигнал (сек)']
         mode_value = d['Позиция при ручной укладки слоя']['Режим звукового сигнала']
-        self.sound_signal_mode = mode_value[0] if isinstance(mode_value, list) else mode_value
+        # Поддержка старого (list/str) и нового (dict) форматов
+        if isinstance(mode_value, dict):
+            self.sound_signal_mode = mode_value["value"]
+        elif isinstance(mode_value, list):
+            self.sound_signal_mode = mode_value[0]
+        else:
+            self.sound_signal_mode = mode_value
         self.is_growing_z = d['Позиция при ручной укладки слоя']['Рост Z с каждым слоем']
 
         # Опции
@@ -96,7 +108,13 @@ class CommandGenerator:
         self.speed_z_extract = d['Скорость (мм/мин)']['Извлечение игл по Z']
         self.speed = self.speed_xy  # для совместимости с TimeEstimator
         self.acceleration = d['Ускорение осей станка (мм/с²)']
-        self.order = d["Порядок прохождения рядов"]
+
+        # Поддержка старого (str) и нового (dict) форматов для порядка прохождения рядов
+        order_value = d["Порядок прохождения рядов"]
+        if isinstance(order_value, dict):
+            self.order = order_value["value"]
+        else:
+            self.order = order_value
 
         # Вычисляем параметры паттерна, если необходимо
         if self.generate_nx_ny:

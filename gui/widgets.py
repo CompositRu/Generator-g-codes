@@ -27,7 +27,24 @@ def display_parameters_recursion(frame, data_dict, i_row):
     labels_dict = {}
     i = i_row
     for section, item in data_dict.items():
-        if isinstance(item, dict):
+        # Проверяем, является ли dict enum параметром (имеет ключи 'value' и 'options')
+        if isinstance(item, dict) and 'value' in item and 'options' in item:
+            # Это enum параметр - создаем комбобокс
+            lab = Label(frame, text=section)
+            lab.grid(column=0, row=i, sticky=N)
+            add_tooltip_by_name(lab, section)
+            combo = Combobox(frame, width=15, values=item['options'], state='readonly')
+            try:
+                combo.current(item['options'].index(item['value']))
+            except (ValueError, IndexError):
+                combo.current(0)
+            combo.grid(column=1, row=i, sticky=N)
+            add_tooltip_by_name(combo, section)
+            widget_dict[section] = combo
+            labels_dict[section] = lab
+            i += 1
+        elif isinstance(item, dict):
+            # Обычный вложенный словарь - создаем секцию
             l = Label(frame, text='\n'+section, font=("Arial Bold", 10, 'bold'))
             l.grid(columnspan=2, row=i, sticky=N)
             add_tooltip_by_name(l, section)  # Добавляем tooltip к заголовку секции

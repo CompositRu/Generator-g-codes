@@ -39,9 +39,10 @@ class GenerationController:
         """
         data = recursion_saver(self.state.wd_left)
 
+        # Получаем текущие значения enum параметров
         data["Порядок прохождения рядов"] = self.state.wd_right["Комбобокс порядок рядов"].get()
-        data["Задание размеров каркаса"] = self.state.type_frame_size_list[
-            data.pop("Номер радиокнопки типа задания размера каркаса")]
+        frame_size_index = data.pop("Номер радиокнопки типа задания размера каркаса")
+        data["Задание размеров каркаса"] = self.state.type_frame_size_list[frame_size_index]
         combo = self.state.wd_right["Комбобокс выбор головы"]
         head_name = combo.get()
         self.state.heads['Выбранная игольница (ИП игольница)'] = head_name

@@ -51,9 +51,11 @@ def recursion_saver(widget_dict):
         elif isinstance(item, Combobox):
             selected = item.get()
             values = list(item['values'])
-            if selected in values:
-                values.remove(selected)
-            data_dict[section] = [selected] + values
+            # Сохраняем в новом формате enum параметров
+            data_dict[section] = {
+                "value": selected,
+                "options": values
+            }
         else:
             if section != "Имя файла":
                 # Код ниже работает одновременно и для Entry, и для IntVar

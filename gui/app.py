@@ -53,10 +53,13 @@ class GeneratorApp:
             self.state.second_dict["Автоматическая генерация имени файла"] = data.pop("Автоматическая генерация имени файла")
             self.state.second_dict["Создание файла на рабочем столе"] = data.pop("Создание файла на рабочем столе")
 
-            self.state.order_list = data.pop("Список вариантов порядка прохождения рядов")
-            self.state.selected_order = data.pop("Порядок прохождения рядов")
-            self.state.type_frame_size_list = data.pop("Список вариантов задания размеров каркаса")
-            self.state.selected_type_frame_size = data.pop("Задание размеров каркаса")
+            order_param = data.pop("Порядок прохождения рядов")
+            self.state.order_list = order_param["options"]
+            self.state.selected_order = order_param["value"]
+
+            frame_size_param = data.pop("Задание размеров каркаса")
+            self.state.type_frame_size_list = frame_size_param["options"]
+            self.state.selected_type_frame_size = frame_size_param["value"]
         except KeyError as ke:
             raise KeyError(f'В data.json файле не хватает параметра {ke}')
 
@@ -87,8 +90,7 @@ class GeneratorApp:
         data.pop("Имя файла")
         for key in ["Случайный порядок ударов", "Случайные смещения", "Коэффициент случайных смещений",
                     "Чередование направлений прохода слоя", "Автоматическая генерация имени файла",
-                    "Создание файла на рабочем столе", "Список вариантов порядка прохождения рядов",
-                    "Порядок прохождения рядов", "Список вариантов задания размеров каркаса",
+                    "Создание файла на рабочем столе", "Порядок прохождения рядов",
                     "Задание размеров каркаса"]:
             data.pop(key, None)
 
