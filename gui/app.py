@@ -149,7 +149,12 @@ class GeneratorApp:
 
         # Центрируем окно
         centered_win(self.window)
-        self.window.resizable(False, False)
+
+        # Разрешаем изменять размер окна
+        self.window.resizable(True, True)
+
+        # Устанавливаем минимальный размер окна
+        self.window.minsize(600, 400)
 
         # Обновляем ссылки на window в компонентах
         HeadConfigDialog.parent = self.window

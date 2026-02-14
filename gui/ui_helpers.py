@@ -55,8 +55,8 @@ def create_scrollable_frame(parent, width=300, height=600):
 
     Args:
         parent: Родительский виджет
-        width: Ширина canvas (по умолчанию 300)
-        height: Высота canvas (по умолчанию 600)
+        width: Начальная ширина canvas (по умолчанию 300)
+        height: Начальная высота canvas (по умолчанию 600)
 
     Returns:
         Frame внутри canvas для размещения виджетов
@@ -64,8 +64,8 @@ def create_scrollable_frame(parent, width=300, height=600):
     # Контейнер для canvas и scrollbar
     container = Frame(parent)
 
-    # Canvas для прокрутки
-    canvas = Canvas(container, width=width, height=height)
+    # Canvas для прокрутки (без фиксированной высоты, чтобы мог растягиваться)
+    canvas = Canvas(container, width=width, height=height, highlightthickness=0)
     scrollbar = Scrollbar(container, orient=VERTICAL, command=canvas.yview)
 
     # Внутренний фрейм, который будет прокручиваться
