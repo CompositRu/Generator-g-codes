@@ -70,7 +70,7 @@ class GeneratorApp:
         self.window.rowconfigure(0, weight=1)
 
         # Создаём левую панель с прокруткой
-        left_container = create_scrollable_frame(self.window, width=500, height=600)
+        left_container = create_scrollable_frame(self.window, width=530, height=600)
         left_container.grid(column=0, row=0, sticky=N+S, padx=5, pady=5)
         left_desk = left_container.scrollable_frame
 

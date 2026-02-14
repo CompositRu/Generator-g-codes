@@ -8,6 +8,7 @@ from tkinter import (Frame, Label, Entry, Checkbutton, Radiobutton, Button,
                       Canvas, IntVar, BooleanVar, N, S, W, E)
 from tkinter.ttk import Combobox
 from gui.ui_helpers import set_text, show_image
+from gui.tooltips import add_tooltip_by_name
 
 
 def display_parameters_recursion(frame, data_dict, i_row):
@@ -29,6 +30,7 @@ def display_parameters_recursion(frame, data_dict, i_row):
         if isinstance(item, dict):
             l = Label(frame, text='\n'+section, font=("Arial Bold", 10, 'bold'))
             l.grid(columnspan=2, row=i, sticky=N)
+            add_tooltip_by_name(l, section)  # Добавляем tooltip к заголовку секции
             i += 1
             labels_dict[section + ' label'] = l
             widget_dict[section], labels_dict[section], i = display_parameters_recursion(frame, item, i)
@@ -36,16 +38,30 @@ def display_parameters_recursion(frame, data_dict, i_row):
             var = BooleanVar(value=item)
             cb = Checkbutton(frame, text=section, variable=var)
             cb.grid(columnspan=2, row=i, sticky=W)
+            add_tooltip_by_name(cb, section)  # Добавляем tooltip к чекбоксу
             widget_dict[section] = var
             # сохраним сам чекбокс в labels_dict — у него тоже есть grid()/grid_remove()
             labels_dict[section] = cb
             i += 1
+        elif isinstance(item, list):
+            lab = Label(frame, text=section)
+            lab.grid(column=0, row=i, sticky=N)
+            add_tooltip_by_name(lab, section)  # Добавляем tooltip к лейблу
+            combo = Combobox(frame, width=15, values=item, state='readonly')
+            combo.current(0)
+            combo.grid(column=1, row=i, sticky=N)
+            add_tooltip_by_name(combo, section)  # Добавляем tooltip к combobox
+            widget_dict[section] = combo
+            labels_dict[section] = lab
+            i += 1
         else:
             lab = Label(frame, text=section)
             lab.grid(column=0, row=i, sticky=N)
+            add_tooltip_by_name(lab, section)  # Добавляем tooltip к лейблу
             text_field = Entry(frame, width=8, justify='center')
             text_field.grid(column=1, row=i, sticky=N)
             set_text(text_field, item)
+            add_tooltip_by_name(text_field, section)  # Добавляем tooltip к полю ввода
             widget_dict[section] = text_field
             labels_dict[section] = lab
             i += 1
@@ -118,6 +134,8 @@ def create_right_panel_top(frame, heads):
     combo = Combobox(frame, width=10, values=val, state='readonly')
     combo.current(val.index(heads["Выбранная игольница (ИП игольница)"]))
     combo.grid(column=1, row=1)
+    add_tooltip_by_name(lab, "ИП голова")  # Добавляем tooltip к лейблу
+    add_tooltip_by_name(combo, "ИП голова")  # Добавляем tooltip к комбобоксу
 
     head_name = combo.get()
     filename = heads['Игольницы (ИП головы)'][head_name]['path']
@@ -158,6 +176,7 @@ def create_order_combobox(frame, order_list, selected_order):
     """
     lbl = Label(frame, text="Порядок прохождения рядов:", font=("Arial Bold", 10, "bold"))
     lbl.grid(columnspan=2, row=5)
+    add_tooltip_by_name(lbl, "Порядок прохождения рядов")
 
     combo = Combobox(frame, width=18, values=order_list, state="readonly")
     try:
@@ -165,6 +184,7 @@ def create_order_combobox(frame, order_list, selected_order):
     except Exception:
         combo.current(0)
     combo.grid(columnspan=2, row=6, padx=50, sticky=E+W)
+    add_tooltip_by_name(combo, "Порядок прохождения рядов")
 
     return combo
 
@@ -197,16 +217,20 @@ def create_right_panel_bottom(frame, second_dict, filename,
         widget_dict[section] = v
         checkbox = Checkbutton(frame, text=section, variable=v, font=("Arial Bold", 10, 'bold'), command=func)
         checkbox.grid(columnspan=2, row=row, sticky=W)
+        add_tooltip_by_name(checkbox, section)  # Добавляем tooltip к чекбоксу
+        return checkbox
 
     create_check_box("Случайный порядок ударов", 11)
     create_check_box("Случайные смещения", 12)
 
     lab = Label(frame, text="Коэффициент")
     lab.grid(column=0, row=13)
+    add_tooltip_by_name(lab, "Коэффициент случайных смещений")
 
     text_field1 = Entry(frame, width=8, justify='center')
     text_field1.grid(column=1, row=13)
     set_text(text_field1, second_dict["Коэффициент случайных смещений"])
+    add_tooltip_by_name(text_field1, "Коэффициент случайных смещений")
     widget_dict["Коэффициент случайных смещений"] = text_field1
 
     create_check_box("Чередование направлений прохода слоя", 14)
@@ -221,10 +245,12 @@ def create_right_panel_bottom(frame, second_dict, filename,
 
     lab = Label(frame, text="Имя файла")
     lab.grid(column=0, row=18)
+    add_tooltip_by_name(lab, "Имя файла")
 
     text_field2 = Entry(frame, width=8, justify='center')
     text_field2.grid(column=1, row=18, sticky=W+E)
     set_text(text_field2, filename)
+    add_tooltip_by_name(text_field2, "Имя файла")
     widget_dict["Имя файла"] = text_field2
 
     bt_show = Button(frame, text="Показать точки", bg="deep sky blue", command=on_show_offsets_callback)

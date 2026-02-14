@@ -81,6 +81,8 @@ class CommandGenerator:
         self.layer_laying_position_z = d['Позиция при ручной укладки слоя']['Z']
         self.pause = d['Позиция при ручной укладки слоя']['Пауза в конце слоя (сек)']
         self.sound_signal_duration = d['Позиция при ручной укладки слоя']['Звуковой сигнал (сек)']
+        mode_value = d['Позиция при ручной укладки слоя']['Режим звукового сигнала']
+        self.sound_signal_mode = mode_value[0] if isinstance(mode_value, list) else mode_value
         self.is_growing_z = d['Позиция при ручной укладки слоя']['Рост Z с каждым слоем']
 
         # Опции
@@ -262,9 +264,7 @@ class CommandGenerator:
             pause_sec = signal_sec
 
         if signal_sec > 0:
-            commands.append(RawCommand(code="M3"))
-            commands.append(PauseCommand(milliseconds=signal_sec * 1000))
-            commands.append(RawCommand(code="M5"))
+            commands.extend(self._generate_sound_signal(signal_sec))
             remaining_pause = pause_sec - signal_sec
             if remaining_pause > 0:
                 commands.append(PauseCommand(milliseconds=remaining_pause * 1000))
@@ -276,6 +276,46 @@ class CommandGenerator:
             is_virtual=is_virtual,
             commands=commands
         )
+
+    def _generate_sound_signal(self, signal_sec: float) -> list:
+        """
+        Генерирует команды звукового сигнала в зависимости от режима.
+
+        Args:
+            signal_sec: Общая длительность сигнала в секундах
+
+        Returns:
+            Список GCodeCommand для звукового блока
+        """
+        INTERMITTENT_PERIOD = 1.0    # Прерывистый: 1с вкл + 1с выкл
+        FAST_PERIOD = 0.25            # Частый прерывистый: 0.3с вкл + 0.3с выкл
+
+        if self.sound_signal_mode == 'Непрерывный':
+            return [
+                RawCommand(code="M3"),
+                PauseCommand(milliseconds=signal_sec * 1000),
+                RawCommand(code="M5"),
+            ]
+
+        if self.sound_signal_mode == 'Прерывистый':
+            period = INTERMITTENT_PERIOD
+        else:  # Частый прерывистый
+            period = FAST_PERIOD
+
+        commands = []
+        remaining = signal_sec
+        while remaining > 0:
+            on_time = min(period, remaining)
+            commands.append(RawCommand(code="M3"))
+            commands.append(PauseCommand(milliseconds=on_time * 1000))
+            commands.append(RawCommand(code="M5"))
+            remaining -= on_time
+            if remaining > 0:
+                off_time = min(period, remaining)
+                commands.append(PauseCommand(milliseconds=off_time * 1000))
+                remaining -= off_time
+
+        return commands
 
     def get_prehead_params(self, work_time: str = "", layer_time: str = "") -> PreheadParams:
         """

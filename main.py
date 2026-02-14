@@ -14,7 +14,7 @@ from utils.crossplatform_utils import get_resource_path
 def main():
     """Главная функция приложения."""
     window = Tk()
-    window.title("Генератор G кодов для ИП станка v.1.11.0")
+    window.title("Генератор G кодов для ИП станка v.1.12.0")
 
     try:
         # На linux системах tkinter не отображает иконку в title bar окна

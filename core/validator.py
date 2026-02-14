@@ -39,7 +39,7 @@ def check_dict_keys(data_dict: Dict[str, Any]) -> str:
     pattern_list = ['Кол-во ударов']
     probivka_list = ['Пробивка с нарастанием глубины', 'Начальная глубина удара (мм)', 'Глубина удара (мм)']
     xy_list = ['X', 'Y']
-    position_list = ['X', 'Y', 'Z', 'Пауза в конце слоя (сек)', 'Звуковой сигнал (сек)', 'Рост Z с каждым слоем']
+    position_list = ['X', 'Y', 'Z', 'Пауза в конце слоя (сек)', 'Звуковой сигнал (сек)', 'Режим звукового сигнала', 'Рост Z с каждым слоем']
     head_parameters_list = ['X', 'Y', 'path']
 
     for item in base_list:

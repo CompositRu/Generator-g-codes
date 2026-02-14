@@ -6,6 +6,7 @@
 
 import json
 from tkinter import BooleanVar, messagebox
+from tkinter.ttk import Combobox
 from os import rename as rename_file
 from os.path import exists as is_existed
 from utils.crossplatform_utils import get_resource_path
@@ -47,6 +48,12 @@ def recursion_saver(widget_dict):
             data_dict[section] = recursion_saver(item)
         elif isinstance(item, BooleanVar):
             data_dict[section] = bool(item.get())
+        elif isinstance(item, Combobox):
+            selected = item.get()
+            values = list(item['values'])
+            if selected in values:
+                values.remove(selected)
+            data_dict[section] = [selected] + values
         else:
             if section != "Имя файла":
                 # Код ниже работает одновременно и для Entry, и для IntVar
