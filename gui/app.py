@@ -11,7 +11,7 @@ from gui.data_manager import load_data_json, load_heads_json
 from gui.widgets import (create_left_panel, create_right_panel_top,
                          create_right_panel_bottom, create_order_combobox)
 from gui.event_handlers import EventHandlers
-from gui.ui_helpers import centered_win
+from gui.ui_helpers import centered_win, create_scrollable_frame
 
 
 class GeneratorApp:
@@ -69,9 +69,12 @@ class GeneratorApp:
         self.window.columnconfigure(1, weight=1)
         self.window.rowconfigure(0, weight=1)
 
-        # Создаём фреймы
-        left_desk = Frame(self.window, padx=5, pady=5)
-        left_desk.grid(column=0, row=0, sticky=N+S)
+        # Создаём левую панель с прокруткой
+        left_container = create_scrollable_frame(self.window, width=500, height=600)
+        left_container.grid(column=0, row=0, sticky=N+S, padx=5, pady=5)
+        left_desk = left_container.scrollable_frame
+
+        # Создаём правую панель (обычный фрейм)
         right_desk = Frame(self.window, padx=5, pady=5)
         right_desk.grid(column=1, row=0, sticky=N+S)
 

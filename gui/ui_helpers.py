@@ -4,7 +4,7 @@
 Содержит вспомогательные функции для работы с Tkinter виджетами.
 '''
 
-from tkinter import Tk, Entry, Canvas, PhotoImage, NW, messagebox
+from tkinter import Tk, Entry, Canvas, PhotoImage, Frame, Scrollbar, NW, messagebox, VERTICAL, RIGHT, LEFT, Y, BOTH
 from utils.crossplatform_utils import get_resource_path
 
 
@@ -47,3 +47,59 @@ def show_image(canvas: Canvas, filename: str):
     if img is not None:
         canvas.image = img
         canvas.create_image(0, 0, anchor=NW, image=img)
+
+
+def create_scrollable_frame(parent, width=300, height=600):
+    """
+    Создаёт прокручиваемый фрейм с вертикальным скроллбаром.
+
+    Args:
+        parent: Родительский виджет
+        width: Ширина canvas (по умолчанию 300)
+        height: Высота canvas (по умолчанию 600)
+
+    Returns:
+        Frame внутри canvas для размещения виджетов
+    """
+    # Контейнер для canvas и scrollbar
+    container = Frame(parent)
+
+    # Canvas для прокрутки
+    canvas = Canvas(container, width=width, height=height)
+    scrollbar = Scrollbar(container, orient=VERTICAL, command=canvas.yview)
+
+    # Внутренний фрейм, который будет прокручиваться
+    scrollable_frame = Frame(canvas)
+
+    # Привязываем изменение размера фрейма к обновлению области прокрутки
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+    )
+
+    # Создаём окно внутри canvas
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Привязываем прокрутку колесиком мыши
+    def _on_mousewheel(event):
+        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _on_mousewheel_linux(event):
+        if event.num == 4:
+            canvas.yview_scroll(-1, "units")
+        elif event.num == 5:
+            canvas.yview_scroll(1, "units")
+
+    # Кроссплатформенная поддержка колесика мыши
+    canvas.bind_all("<MouseWheel>", _on_mousewheel)  # Windows/MacOS
+    canvas.bind_all("<Button-4>", _on_mousewheel_linux)  # Linux scroll up
+    canvas.bind_all("<Button-5>", _on_mousewheel_linux)  # Linux scroll down
+
+    # Размещаем canvas и scrollbar
+    canvas.pack(side=LEFT, fill=BOTH, expand=True)
+    scrollbar.pack(side=RIGHT, fill=Y)
+
+    # Возвращаем контейнер и внутренний фрейм
+    container.scrollable_frame = scrollable_frame
+    return container
