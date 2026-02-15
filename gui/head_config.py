@@ -4,11 +4,14 @@
 Содержит класс HeadConfigDialog для управления конфигурацией игольниц.
 '''
 
+import logging
 from tkinter import Toplevel, Entry, Canvas, Button, Label, W, E, messagebox
 from gui.state import AppState
 from gui.ui_helpers import set_text, show_image, centered_win
 from gui.data_manager import write_to_json_file
 from utils.crossplatform_utils import get_resource_path
+
+logger = logging.getLogger(__name__)
 
 
 class HeadConfigDialog:
@@ -26,6 +29,39 @@ class HeadConfigDialog:
         self.state = state
         self.win = None
         self.widgets = {}
+        self.head_data = {}  # Словарь с данными игольниц {имя: {X, Y, path}}
+
+    def _clear_all_widgets(self):
+        """Удаляет все виджеты игольниц из окна."""
+        for head_name, head_widgets in self.widgets.items():
+            for widget_name, widget in head_widgets.items():
+                try:
+                    widget.destroy()
+                except Exception as e:
+                    logger.error(f"Ошибка при удалении виджета {widget_name} для {head_name}: {e}")
+        self.widgets.clear()
+
+
+    def _rebuild_layout(self):
+        """Полностью пересоздаёт layout виджетов."""
+
+        # Удаляем все существующие виджеты
+        self._clear_all_widgets()
+
+        # Создаём виджеты заново
+        column_index = 0
+        for head_name in sorted(self.head_data.keys()):
+            item = self.head_data[head_name]
+            self.widgets[head_name] = self._create_widgets_for_head(head_name, item, column_index)
+            column_index += 2
+
+        # Обновляем позицию кнопок
+        total_columns = len(self.head_data) * 2
+        if total_columns == 0:
+            total_columns = 2  # Минимум 2 колонки даже если нет игольниц
+
+        self.add_button.grid(columnspan=total_columns, row=6, sticky=W+E, padx=10, pady=0)
+        self.save_button.grid(columnspan=total_columns, row=7, sticky=W+E, padx=10, pady=10)
 
     def _create_widgets_for_head(self, section, item, column_index):
         """
@@ -88,61 +124,80 @@ class HeadConfigDialog:
     def _make_delete_func(self, head):
         """Создаёт функцию удаления для кнопки."""
         def f():
-            # удаляем из словаря виджетов
-            for name, widget in self.widgets[head].items():
-                widget.destroy()
-            self.widgets.pop(head)
-            columnspan = len(self.widgets) * 2 + 2
-            self.add_button.grid(columnspan=columnspan, row=6, sticky=W+E, padx=10, pady=0)
-            self.save_button.grid(columnspan=columnspan, row=7, sticky=W+E, padx=10, pady=10)
+            if head not in self.head_data:
+                messagebox.showerror("Ошибка", f"Игольница {head} не найдена")
+                return
+
+            # Удаляем из данных
+            self.head_data.pop(head)
+
+            # Пересоздаём весь layout
+            self._rebuild_layout()
         return f
 
     def _add_widget(self):
         """Добавляет новую голову."""
-        idx = len(self.widgets) + 1
-        i2 = len(self.widgets) * 2
+        # Находим свободный индекс для новой головы
+        existing_indices = []
+        for name in self.head_data.keys():
+            if name.startswith("Г") and name[1:].isdigit():
+                existing_indices.append(int(name[1:]))
+
+        idx = 1
+        while idx in existing_indices:
+            idx += 1
+
         name = f"Г{idx}"
-        parameters = {"X": idx, "Y": idx, "path": "введите имя"}
-        self.widgets[name] = self._create_widgets_for_head(name, parameters, i2)
-        self.add_button.grid(columnspan=i2 + 2, row=6, sticky=W+E, padx=10, pady=0)
-        self.save_button.grid(columnspan=i2 + 2, row=7, sticky=W+E, padx=10, pady=10)
+
+        # Добавляем в данные
+        self.head_data[name] = {"X": idx, "Y": idx, "path": "введите имя"}
+
+        # Пересоздаём весь layout
+        self._rebuild_layout()
 
     def _save_data_heads(self):
         """Сохраняет данные игольниц."""
-        combo = self.state.wd_right["Комбобокс выбор головы"]
-        head_name = combo.get()
-        self.state.heads['Выбранная игольница (ИП игольница)'] = head_name
 
-        # Проверка данных
-        for _, widget in self.widgets.items():
+        combo = self.state.wd_right["Комбобокс выбор головы"]
+        current_head = combo.get()
+        self.state.heads['Выбранная игольница (ИП игольница)'] = current_head
+
+        # Проверка и сохранение данных из виджетов обратно в head_data
+        for head_name, widget in self.widgets.items():
             try:
                 x = int(widget['X'].get())
                 y = int(widget['Y'].get())
-            except ValueError:
+                path = widget['path'].get()
+                new_name = widget['head_name'].get()
+
+                # Обновляем данные
+                if new_name != head_name:
+                    # Переименование
+                    self.head_data[new_name] = self.head_data.pop(head_name)
+                    head_name = new_name
+
+                self.head_data[head_name] = {"X": x, "Y": y, "path": path}
+
+            except ValueError as e:
                 messagebox.showerror('Смотри, что пишешь!', 'Количеством игл может быть только целое число')
                 return
 
+        # Сохраняем в state
         self.state.heads["Игольницы (ИП головы)"].clear()
-        head_needles = self.state.heads["Игольницы (ИП головы)"]
+        self.state.heads["Игольницы (ИП головы)"].update(self.head_data)
 
-        # Сохранение данных
-        for head, widget in self.widgets.items():
-            head_name = widget['head_name'].get()
-            head_needles[head_name] = {}
-            head_data = head_needles[head_name]
-            head_data['X'] = int(widget['X'].get())
-            head_data['Y'] = int(widget['Y'].get())
-            head_data['path'] = widget['path'].get()
-
+        # Сохраняем в файл
         write_to_json_file(get_resource_path('data/heads.json'), self.state.heads)
 
+        # Обновляем комбобокс
         combo = self.state.wd_right["Комбобокс выбор головы"]
-        idx = combo['values'].index(combo.get())
+        try:
+            old_idx = combo['values'].index(current_head)
+        except ValueError:
+            old_idx = 0
 
-        combo['values'] = [section for section, item in self.state.heads["Игольницы (ИП головы)"].items()]
-
-        combo.current(idx if idx < len(combo['values']) else 0)
-        self.state.heads['Выбранная игольница (ИП игольница)'] = combo.get()
+        combo['values'] = list(self.head_data.keys())
+        combo.current(old_idx if old_idx < len(combo['values']) else 0)
 
         # Обновляем главное окно - вызываем on_head_change
         from gui.event_handlers import EventHandlers
@@ -151,6 +206,7 @@ class HeadConfigDialog:
 
     def show(self):
         """Отображает диалоговое окно."""
+
         self.win = Toplevel(self.parent)
         self.win.title("Игольницы (ИП головы)")
         try:
@@ -162,33 +218,23 @@ class HeadConfigDialog:
         self.win.grab_set()  # Блокирует другие окна Tkinter
         self.win.attributes('-topmost', 1)  # Окно поверх других
 
-        # Создаём виджеты для всех существующих голов
-        i = 0
-        self.widgets = {}
+        # Копируем данные из state в head_data
+        self.head_data = {}
         for section, item in self.state.heads["Игольницы (ИП головы)"].items():
-            self.widgets[section] = self._create_widgets_for_head(section, item, i)
-            i += 2
+            self.head_data[section] = dict(item)  # Копия словаря
 
-        # Кнопка добавления
+        # Создаём кнопки (они будут использоваться в _rebuild_layout)
         self.add_button = Button(self.win,
                                   text='Добавить голову',
                                   command=self._add_widget)
-        self.add_button.grid(columnspan=len(self.state.heads['Игольницы (ИП головы)']) * 2 + 20,
-                             row=6,
-                             sticky=W+E,
-                             padx=10,
-                             pady=0)
 
-        # Кнопка сохранения
         self.save_button = Button(self.win,
                                    text='Сохранить',
                                    bg='ivory4',
                                    command=self._save_data_heads)
-        self.save_button.grid(columnspan=len(self.state.heads['Игольницы (ИП головы)']) * 2,
-                              row=7,
-                              sticky=W+E,
-                              padx=10,
-                              pady=10)
+
+        # Создаём виджеты
+        self._rebuild_layout()
 
         centered_win(self.win)
         self.win.resizable(False, False)

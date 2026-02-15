@@ -6,13 +6,35 @@
 '''
 
 import sys
+import logging
 from tkinter import Tk, messagebox
 from gui import GeneratorApp
 from utils.crossplatform_utils import get_resource_path
 
 
+def setup_logging():
+    """Настраивает логирование для приложения."""
+    # Создаём логгер
+    logger = logging.getLogger()
+
+    # Формат логов
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    # Вывод в консоль
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+
 def main():
     """Главная функция приложения."""
+    # Настраиваем логирование
+    setup_logging()
+
     window = Tk()
     window.title("Генератор G кодов для ИП станка v.1.12.0")
 
