@@ -46,9 +46,19 @@ class CommandGenerator:
         """Извлекает и вычисляет все необходимые параметры."""
         d = self._data
 
-        # Базовые параметры
-        self.cell_size_x = d['Расстояние между иглами (мм)']['X']
-        self.cell_size_y = d['Расстояние между иглами (мм)']['Y']
+        # Базовые параметры - читаем spacing из выбранной игольницы
+        head_name = d['Выбранная игольница (ИП игольница)']
+        head_data = d['Игольницы (ИП головы)'][head_name]
+
+        # Поддержка старого формата (fallback для обратной совместимости)
+        if 'needle_spacing_x' in head_data:
+            self.cell_size_x = head_data['needle_spacing_x']
+            self.cell_size_y = head_data['needle_spacing_y']
+        else:
+            # Fallback для старых конфигураций (если миграция не сработала)
+            self.cell_size_x = d.get('Расстояние между иглами (мм)', {}).get('X', 8.0)
+            self.cell_size_y = d.get('Расстояние между иглами (мм)', {}).get('Y', 8.0)
+
         self.num_pitch = d['Параметры паттерна']['Кол-во ударов']
         self.generate_nx_ny = d['Параметры паттерна']['Автоматическое определение формы паттерна']
         self.nx = d['Параметры паттерна']['nx']

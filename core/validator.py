@@ -28,7 +28,6 @@ def check_dict_keys(data_dict: Dict[str, Any]) -> str:
         "Параметры паттерна",
         "Количество шагов головы",
         "Позиция при ручной укладки слоя",
-        "Расстояние между иглами (мм)",
         "Случайный порядок ударов",
         "Случайные смещения",
         "Коэффициент случайных смещений",
@@ -40,7 +39,7 @@ def check_dict_keys(data_dict: Dict[str, Any]) -> str:
     probivka_list = ['Пробивка с нарастанием глубины', 'Начальная глубина удара (мм)', 'Глубина удара (мм)']
     xy_list = ['X', 'Y']
     position_list = ['X', 'Y', 'Z', 'Пауза в конце слоя (сек)', 'Звуковой сигнал (сек)', 'Режим звукового сигнала', 'Рост Z с каждым слоем']
-    head_parameters_list = ['X', 'Y', 'path']
+    head_parameters_list = ['X', 'Y', 'path', 'needle_spacing_x', 'needle_spacing_y']
 
     for item in base_list:
         if item not in data_dict:
@@ -62,17 +61,15 @@ def check_dict_keys(data_dict: Dict[str, Any]) -> str:
         if item not in data_dict["Позиция при ручной укладки слоя"]:
             return item + ' в ' + "Позиция при ручной укладки слоя"
 
-    for item in xy_list:
-        if item not in data_dict["Расстояние между иглами (мм)"]:
-            return item + ' в ' + "Расстояние между иглами (мм)"
-
     for item in heads_list:
         if item not in data_dict:
             return item
 
     head_name = data_dict["Выбранная игольница (ИП игольница)"]
+    head_data = data_dict["Игольницы (ИП головы)"][head_name]
+
     for item in head_parameters_list:
-        if item not in data_dict["Игольницы (ИП головы)"][head_name]:
-            return item + ' в ' + "Игольницы (ИП головы)"
+        if item not in head_data:
+            return item + ' в игольнице ' + head_name
 
     return ''

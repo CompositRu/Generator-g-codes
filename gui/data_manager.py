@@ -109,3 +109,31 @@ def load_heads_json():
     """
     with open(get_resource_path('data/heads.json'), 'r', encoding='utf-8-sig') as f:
         return json.load(f)
+
+
+def migrate_heads_data(heads_dict: dict, data_dict: dict) -> dict:
+    """
+    Мигрирует данные игольниц, добавляя needle_spacing из data.json если отсутствует.
+
+    Обеспечивает обратную совместимость со старыми конфигурациями.
+
+    Args:
+        heads_dict: Словарь с игольницами из heads.json
+        data_dict: Словарь с параметрами из data.json
+
+    Returns:
+        Обновлённый словарь heads_dict с полями needle_spacing
+    """
+    # Получаем глобальное расстояние (может отсутствовать в новых конфигах)
+    global_spacing = data_dict.get("Расстояние между иглами (мм)", {})
+    default_x = global_spacing.get("X", 8.0)
+    default_y = global_spacing.get("Y", 8.0)
+
+    # Мигрируем каждую игольницу
+    for head_name, head_data in heads_dict["Игольницы (ИП головы)"].items():
+        if "needle_spacing_x" not in head_data:
+            head_data["needle_spacing_x"] = default_x
+        if "needle_spacing_y" not in head_data:
+            head_data["needle_spacing_y"] = default_y
+
+    return heads_dict

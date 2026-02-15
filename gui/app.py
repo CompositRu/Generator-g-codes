@@ -7,7 +7,7 @@
 from tkinter import Tk, Frame, BooleanVar, messagebox, N, S
 
 from gui.state import AppState
-from gui.data_manager import load_data_json, load_heads_json
+from gui.data_manager import load_data_json, load_heads_json, migrate_heads_data
 from gui.widgets import (create_left_panel, create_right_panel_top,
                          create_right_panel_bottom, create_order_combobox)
 from gui.event_handlers import EventHandlers
@@ -40,6 +40,9 @@ class GeneratorApp:
         # Загружаем данные
         data = load_data_json()
         self.state.heads = load_heads_json()
+
+        # Миграция данных игольниц (добавляем needle_spacing если отсутствует)
+        self.state.heads = migrate_heads_data(self.state.heads, data)
 
         # Извлекаем имя файла
         self.state.filename = data.pop("Имя файла")

@@ -9,6 +9,7 @@ from tkinter import Toplevel, Entry, Canvas, Button, Label, W, E, messagebox
 from gui.state import AppState
 from gui.ui_helpers import set_text, show_image, centered_win
 from gui.data_manager import write_to_json_file
+from gui.tooltips import add_tooltip_by_name
 from utils.crossplatform_utils import get_resource_path
 
 logger = logging.getLogger(__name__)
@@ -60,8 +61,8 @@ class HeadConfigDialog:
         if total_columns == 0:
             total_columns = 2  # Минимум 2 колонки даже если нет игольниц
 
-        self.add_button.grid(columnspan=total_columns, row=6, sticky=W+E, padx=10, pady=0)
-        self.save_button.grid(columnspan=total_columns, row=7, sticky=W+E, padx=10, pady=10)
+        self.add_button.grid(columnspan=total_columns, row=8, sticky=W+E, padx=10, pady=0)
+        self.save_button.grid(columnspan=total_columns, row=9, sticky=W+E, padx=10, pady=10)
 
     def _create_widgets_for_head(self, section, item, column_index):
         """
@@ -87,25 +88,49 @@ class HeadConfigDialog:
 
         label_x = Label(self.win, text='X')
         label_x.grid(column=i, row=2)
+        add_tooltip_by_name(label_x, "Количество игл X")
+
         label_y = Label(self.win, text='Y')
         label_y.grid(column=i, row=3)
+        add_tooltip_by_name(label_y, "Количество игл Y")
         label_path = Label(self.win, text='Файл')
         label_path.grid(column=i, row=4)
 
         textfield_x = Entry(self.win)
         set_text(textfield_x, item['X'])
         textfield_x.grid(column=i+1, row=2)
+        add_tooltip_by_name(textfield_x, "Количество игл X")
 
         textfield_y = Entry(self.win)
         set_text(textfield_y, item['Y'])
         textfield_y.grid(column=i+1, row=3)
+        add_tooltip_by_name(textfield_y, "Количество игл Y")
 
         path = Entry(self.win)
         set_text(path, item['path'])
         path.grid(column=i+1, row=4)
 
+        # Поля для расстояния между иглами
+        label_spacing_x = Label(self.win, text='Расст. X (мм)')
+        label_spacing_x.grid(column=i, row=5)
+        add_tooltip_by_name(label_spacing_x, "Расст. X (мм)")
+
+        textfield_spacing_x = Entry(self.win)
+        set_text(textfield_spacing_x, item.get('needle_spacing_x', 8.0))
+        textfield_spacing_x.grid(column=i+1, row=5)
+        add_tooltip_by_name(textfield_spacing_x, "Расст. X (мм)")
+
+        label_spacing_y = Label(self.win, text='Расст. Y (мм)')
+        label_spacing_y.grid(column=i, row=6)
+        add_tooltip_by_name(label_spacing_y, "Расст. Y (мм)")
+
+        textfield_spacing_y = Entry(self.win)
+        set_text(textfield_spacing_y, item.get('needle_spacing_y', 8.0))
+        textfield_spacing_y.grid(column=i+1, row=6)
+        add_tooltip_by_name(textfield_spacing_y, "Расст. Y (мм)")
+
         delete_button = Button(self.win, text='Удалить', command=self._make_delete_func(section))
-        delete_button.grid(columnspan=2, column=i, row=5, sticky=W+E, padx=10, pady=10)
+        delete_button.grid(columnspan=2, column=i, row=7, sticky=W+E, padx=10, pady=10)
 
         head_widgets = {
             "head_name": textfield_head_name,
@@ -113,10 +138,14 @@ class HeadConfigDialog:
             "label_x": label_x,
             "label_y": label_y,
             "label_path": label_path,
+            "label_spacing_x": label_spacing_x,
+            "label_spacing_y": label_spacing_y,
             "delete_button": delete_button,
             "X": textfield_x,
             "Y": textfield_y,
             "path": path,
+            "needle_spacing_x": textfield_spacing_x,
+            "needle_spacing_y": textfield_spacing_y,
         }
 
         return head_widgets
@@ -150,7 +179,13 @@ class HeadConfigDialog:
         name = f"Г{idx}"
 
         # Добавляем в данные
-        self.head_data[name] = {"X": idx, "Y": idx, "path": "введите имя"}
+        self.head_data[name] = {
+            "X": idx,
+            "Y": idx,
+            "needle_spacing_x": 8.0,
+            "needle_spacing_y": 8.0,
+            "path": "введите имя"
+        }
 
         # Пересоздаём весь layout
         self._rebuild_layout()
@@ -167,8 +202,22 @@ class HeadConfigDialog:
             try:
                 x = int(widget['X'].get())
                 y = int(widget['Y'].get())
+                spacing_x = round(float(widget['needle_spacing_x'].get()), 2)
+                spacing_y = round(float(widget['needle_spacing_y'].get()), 2)
                 path = widget['path'].get()
                 new_name = widget['head_name'].get()
+
+                # Валидация количества игл
+                if x <= 0 or y <= 0:
+                    messagebox.showerror('Ошибка валидации',
+                                       f'Количество игл должно быть больше нуля для {head_name}')
+                    return
+
+                # Валидация расстояния между иглами
+                if spacing_x <= 0 or spacing_y <= 0:
+                    messagebox.showerror('Ошибка валидации',
+                                       f'Расстояние между иглами должно быть больше нуля для {head_name}')
+                    return
 
                 # Обновляем данные
                 if new_name != head_name:
@@ -176,10 +225,18 @@ class HeadConfigDialog:
                     self.head_data[new_name] = self.head_data.pop(head_name)
                     head_name = new_name
 
-                self.head_data[head_name] = {"X": x, "Y": y, "path": path}
+                self.head_data[head_name] = {
+                    "X": x,
+                    "Y": y,
+                    "needle_spacing_x": spacing_x,
+                    "needle_spacing_y": spacing_y,
+                    "path": path
+                }
 
             except ValueError as e:
-                messagebox.showerror('Смотри, что пишешь!', 'Количеством игл может быть только целое число')
+                messagebox.showerror('Смотри, что пишешь!',
+                                   'Количеством игл может быть только целое число, '
+                                   'расстояние между иглами - числом с точкой')
                 return
 
         # Сохраняем в state

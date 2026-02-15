@@ -43,10 +43,11 @@ def get_filename(data_dict: Dict[str, Any]) -> str:
     frame_height = int(amount_layers * layer_thickness)
 
     if selected_type_frame_size == 'По шагам головы':
-        cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
-        cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
-        needles_x = data_dict['Игольницы (ИП головы)'][head_name]['X']
-        needles_y = data_dict['Игольницы (ИП головы)'][head_name]['Y']
+        head_data = data_dict['Игольницы (ИП головы)'][head_name]
+        cell_size_x = head_data.get('needle_spacing_x', 8.0)
+        cell_size_y = head_data.get('needle_spacing_y', 8.0)
+        needles_x = head_data['X']
+        needles_y = head_data['Y']
         num_step_x = data_dict['Количество шагов головы']['X']
         num_row_y = data_dict['Количество шагов головы']['Y']
 
@@ -97,11 +98,12 @@ def get_message(data_dict: Dict[str, Any]) -> str:
     Returns:
         Информационное сообщение или пустая строка
     """
-    cell_size_x = data_dict['Расстояние между иглами (мм)']['X']
-    cell_size_y = data_dict['Расстояние между иглами (мм)']['Y']
     head_name = data_dict['Выбранная игольница (ИП игольница)']
-    needles_x = data_dict['Игольницы (ИП головы)'][head_name]['X']
-    needles_y = data_dict['Игольницы (ИП головы)'][head_name]['Y']
+    head_data = data_dict['Игольницы (ИП головы)'][head_name]
+    cell_size_x = head_data.get('needle_spacing_x', 8.0)
+    cell_size_y = head_data.get('needle_spacing_y', 8.0)
+    needles_x = head_data['X']
+    needles_y = head_data['Y']
     frame_length_x = data_dict['Габариты каркаса']['X']
     frame_length_y = data_dict['Габариты каркаса']['Y']
     selected_type_frame_size = data_dict['Задание размеров каркаса']

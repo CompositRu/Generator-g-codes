@@ -174,8 +174,13 @@ class EventHandlers:
         from gui.visualization import show_visualization
 
         try:
-            cell_size_x = float(self.state.wd_left["Расстояние между иглами (мм)"]["X"].get())
-            cell_size_y = float(self.state.wd_left["Расстояние между иглами (мм)"]["Y"].get())
+            # Получаем spacing из выбранной головы
+            combo = self.state.wd_right["Комбобокс выбор головы"]
+            head_name = combo.get()
+            head_data = self.state.heads["Игольницы (ИП головы)"][head_name]
+            cell_size_x = float(head_data.get('needle_spacing_x', 8.0))
+            cell_size_y = float(head_data.get('needle_spacing_y', 8.0))
+
             num_pitch = int(self.state.wd_left["Параметры паттерна"]["Кол-во ударов"].get())
             generate_nx_ny = bool(self.state.wd_left['Параметры паттерна']['Автоматическое определение формы паттерна'].get())
             nx = int(self.state.wd_left['Параметры паттерна']['nx'].get())

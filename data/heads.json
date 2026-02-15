@@ -3,7 +3,16 @@
         "лаб_Г1": {
             "X": 4,
             "Y": 33,
+            "needle_spacing_x": 8.0,
+            "needle_spacing_y": 8.0,
             "path": "lab_G1.png"
+        },
+        "Г1": {
+            "X": 1,
+            "Y": 1,
+            "needle_spacing_x": 8.0,
+            "needle_spacing_y": 8.0,
+            "path": "введите имя"
         }
     },
     "Выбранная игольница (ИП игольница)": "лаб_Г1"
